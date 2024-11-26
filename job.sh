@@ -33,16 +33,11 @@ export CUDA_LAUNCH_BLOCKING=0
 export NCCL_SOCKET_IFNAME="ens"
 export FI_EFA_USE_DEVICE_RDMA=1
 
-
-
 eval "$(conda shell.bash hook)"
 module load cuda/12.4.1-fasrc01
 module load cudnn/8.9.2.26_cuda12-fasrc01
 conda activate /n/home13/chloe00/miniconda3/envs/mmc
 
-# Set the master node's address and port
-export MASTER_ADDR=$(hostname -s)      # Use the hostname of the master node
-export MASTER_PORT=12355              # Set a fixed port for communication
 
 # Set the world size (total number of processes across all nodes)
 export WORLD_SIZE=4
