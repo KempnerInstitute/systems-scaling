@@ -57,6 +57,7 @@ def simulate_matmul_with_sharding():
         # Simulate matrix multiplication
         communication_log = []
         result_shards = {}
+        comm_times = []
 
         for gpu_id in range(num_gpus):
             # Each GPU computes one quadrant of the final result
@@ -71,13 +72,23 @@ def simulate_matmul_with_sharding():
 
                 # Simulate shard transfer if input shard is not local
                 print('gpu_id', gpu_id, 'weight_shard_id', weight_shard_id, input_shard_id)
+                start_event = torch.cuda.Event(enable_timing=True)
+                end_event = torch.cuda.Event(enable_timing=True)
                 if weight_shard.device.index != gpu_id:
+                    start_event.record()  # Record start of weight shard transfer
                     communication_log.append((f"W_{weight_shard.device.index}", weight_shard.device, gpu_id))
                     weight_shard = weight_shard.clone().to(f"cuda:{gpu_id}")
+                    end_event.record()  # Record end of weight shard transfer
+                    torch.cuda.synchronize()  # Synchronize to ensure the transfer is complete
+                    comm_times.append(start_event.elapsed_time(end_event))  # Measure time for transfer
 
                 if input_shard.device.index != gpu_id:
+                    start_event.record()  # Record start of input shard transfer
                     communication_log.append((f"x_{input_shard_id}", input_shard.device, gpu_id))
                     input_shard = input_shard.clone().to(f"cuda:{gpu_id}")
+                    end_event.record()  # Record end of input shard transfer
+                    torch.cuda.synchronize()  # Synchronize to ensure the transfer is complete
+                    comm_times.append(start_event.elapsed_time(end_event))  # Measure time for transfer
                 
                 # Compute partial results for the corresponding submatrix
                 local_result += weight_shard @ input_shard.T
@@ -88,14 +99,14 @@ def simulate_matmul_with_sharding():
         results.append({
             "input_order": order,
             "communication_log": communication_log,
-            'comm_cost': len(communication_log)
+            'comm_cost': sum(comm_times)
         })
 
     # Display results
     for res in results:
         print(f"Input Order: {res['input_order']}")
         print(f"Communication Log: {res['communication_log']}")
-        print(f"Communication cost: {res['comm_cost']}")
+        print(f"Communication cost (in milliseconds): {res['comm_cost']}")
         print("-" * 50)
 
 if __name__ == "__main__":
