@@ -7,16 +7,16 @@ import time
 
 # Function for each GPU process
 def run_process(rank, world_size, num_gpus_per_node, results, shard_dim, weight_shards, input_shards):
-    os.environ["MASTER_ADDR"] = "localhost"  # Replace with master node IP if running on multiple nodes
-    os.environ["MASTER_PORT"] = "12355"     # Ensure this port is free
-    os.environ["WORLD_SIZE"] = str(world_size)
+    # os.environ["MASTER_ADDR"] = "localhost"  # Replace with master node IP if running on multiple nodes
+    # os.environ["WORLD_SIZE"] = str(world_size)
     os.environ["RANK"] = str(rank)
 
     dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+    print(f"Rank: {torch.distributed.get_rank()}, GPU: {torch.cuda.current_device()}")
 
     # Node and GPU assignments
     node_id = rank // num_gpus_per_node
-    gpu_id = rank
+    gpu_id = rank % num_gpus_per_node
     torch.cuda.set_device(gpu_id)
 
     # Track communication
@@ -87,7 +87,6 @@ def simulate_matmul_with_distributed_sharding(order):
     W = torch.randn(total_dim, total_dim, device="cpu")
     X = torch.randn(total_dim, total_dim, device="cpu")
 
-    # Shard weights and inputs
     weight_shards = [
         W[:shard_dim, :shard_dim],  # W_11
         W[:shard_dim, shard_dim:],  # W_12
@@ -102,19 +101,19 @@ def simulate_matmul_with_distributed_sharding(order):
     ]
 
     # Move local weight shards to GPU
-    weight_shards = [shard.to(f"cuda:{gpu_id}") for gpu_id, shard in enumerate(weight_shards)]
-    input_shards = [shard.to(f"cuda:{gpu_id}") for shard in input_shards]
-    input_to_gpu = {gpu: input_shards[idx].to(f"cuda:{gpu}") for idx, gpu in enumerate(order)}
-    print(weight_shards)
+    # input_shards = [shard.to(f"cuda:{gpu_id}") for shard in input_shards]
+    # input_to_gpu = {gpu: input_shards[idx].to(f"cuda:{gpu}") for idx, gpu in enumerate(order)}
 
     manager = mp.Manager()
     results = manager.dict()
-    mp.spawn(
-        run_process,
-        args=(world_size, num_gpus_per_node, results, shard_dim, weight_shards, input_to_gpu),
-        nprocs=world_size,
-        join=True,
-    )
+    # run_process,
+    #     args=(world_size, num_gpus_per_node, results, shard_dim, weight_shards, input_shards),
+    #     nprocs=world_size,
+    #     join=True,
+    run_process(rank=int(os.environ["RANK"]), world_size=world_size, 
+                num_gpus_per_node=num_gpus_per_node, results=results, 
+                shard_dim=shard_dim, weight_shards=weight_shards, input_shards=input_shards)
+
 
     # Display results
     for gpu_id, res in results.items():
@@ -126,4 +125,5 @@ def simulate_matmul_with_distributed_sharding(order):
 if __name__ == "__main__":
     input_orders = list(itertools.permutations(range(4)))
     for order in input_orders:
+        print(order)
         simulate_matmul_with_distributed_sharding(order)
