@@ -5,72 +5,179 @@ import torch.multiprocessing as mp
 import itertools
 import time
 
-# Function for each GPU process
-def run_process(rank, world_size, num_gpus_per_node, results, shard_dim, weight_shards, input_shards):
-    # os.environ["MASTER_ADDR"] = "localhost"  # Replace with master node IP if running on multiple nodes
-    # os.environ["WORLD_SIZE"] = str(world_size)
-    os.environ["RANK"] = str(rank)
 
-    dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
-    print(f"Rank: {torch.distributed.get_rank()}, GPU: {torch.cuda.current_device()}")
+def gather_communication_times(communication_times, rank, world_size):
+    if rank == 0:
+        # Prepare a list to gather communication times from all processes
+        gather_list = [torch.zeros_like(communication_times) for _ in range(world_size)]
+    else:
+        gather_list = None
 
-    # Node and GPU assignments
+    dist.gather(communication_times, gather_list, dst=0)
+
+    if rank == 0:
+        # Process the gathered communication times
+        print(f" Communication Times:")
+        inter_node_times = 0
+        intra_node_times = 0
+        total_comm_times = 0
+        for idx, comm_times in enumerate(gather_list):
+            inter_node_time = comm_times[0].item()
+            intra_node_time = comm_times[1].item()
+            inter_node_times += inter_node_time
+            intra_node_times += intra_node_time
+            total_comm_times += inter_node_time + intra_node_time
+            
+        print(f"  Inter-node Time: {inter_node_times}")
+        print(f"  Intra-node Time: {intra_node_times}")
+        print(f"  Total Communication Time: {total_comm_times}")
+        print("-" * 50)
+
+
+def run_process(shard_dim, weight_shards, input_shards, order):
+    dist.init_process_group(backend="nccl")
+    rank = dist.get_rank()
+    
+    num_gpus_per_node = int(os.environ.get('LOCAL_WORLD_SIZE', 1))
     node_id = rank // num_gpus_per_node
     gpu_id = rank % num_gpus_per_node
     torch.cuda.set_device(gpu_id)
 
-    # Track communication
-    communication_cost = 0
+    # Initialize communication time trackers
+    inter_node_time = 0
+    intra_node_time = 0
 
-    # Required shards for the process's computation
-    required_weight_shards = [0, 1] if gpu_id < 2 else [2, 3]
-    required_input_shards = [0, 1] if gpu_id % 2 == 0 else [2, 3]
+    # Map shard IDs to process ranks
+    shard_id_to_rank = {
+        0: 0,
+        1: 1,
+        2: 2,
+        3: 3
+    }
+    weight_shard_id_to_rank = {
+        0: 0,
+        1: 1,
+        2: 2,
+        3: 3
+    }
+    input_shard_id_to_rank = {input_shard_id: rank for rank, input_shard_id in enumerate(order)}
 
+    # Determine which shards this process requires
+    def get_required_weight_shards(rank):
+        return [0, 1] if rank < 2 else [2, 3]
+
+    def get_required_input_shards(rank, order):
+        if rank % 2 == 0:
+            return [order[0], order[1]]
+        else:
+            return [order[2], order[3]]
+
+    required_weight_shards = get_required_weight_shards(rank)
+    required_input_shards = get_required_input_shards(rank, order)
+
+    received_weight_shards = {}
+    received_input_shards = {}
     # Allocate space for local result
     local_result = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
 
-    for weight_shard_id, input_shard_id in zip(required_weight_shards, required_input_shards):
-        # Transfer weight shards if needed
-        weight_shard = weight_shards[weight_shard_id]
-        start_time = time.perf_counter()
-        if node_id != weight_shard_id // num_gpus_per_node:
-            # Inter-node communication
-            dist.send(tensor=weight_shard, dst=weight_shard_id)
-            dist.recv(tensor=weight_shard, src=weight_shard_id)
-            inter_node_time += time.perf_counter() - start_time
-        elif gpu_id != weight_shard_id:
-            # Intra-node communication
-            dist.send(tensor=weight_shard, dst=weight_shard_id)
-            dist.recv(tensor=weight_shard, src=weight_shard_id)
-            intra_node_time += time.perf_counter() - start_time
+    # Broadcast weight shards
+    world_size = 4
 
-        # Measure input shard communication
-        input_shard = input_shards[input_shard_id]
-        start_time = time.perf_counter()
-        if node_id != input_shard_id // num_gpus_per_node:
-            # Inter-node communication
-            dist.send(tensor=input_shard, dst=input_shard_id)
-            dist.recv(tensor=input_shard, src=input_shard_id)
-            inter_node_time += time.perf_counter() - start_time
-        elif gpu_id != input_shard_id:
-            # Intra-node communication
-            dist.send(tensor=input_shard, dst=input_shard_id)
-            dist.recv(tensor=input_shard, src=input_shard_id)
-            intra_node_time += time.perf_counter() - start_time
+    weight_groups = []
+    for weight_shard_id in range(4):
+        weight_owner_rank = weight_shard_id_to_rank[weight_shard_id]
+        ranks_needing_weight_shard = [
+            r for r in range(world_size) if weight_shard_id in get_required_weight_shards(r)
+        ]
+        if weight_owner_rank not in ranks_needing_weight_shard:
+            ranks_needing_weight_shard.append(weight_owner_rank)
+        ranks_needing_weight_shard.sort()
+        group = dist.new_group(ranks=ranks_needing_weight_shard)
+        weight_groups.append((group, weight_shard_id, weight_owner_rank, ranks_needing_weight_shard))
+    
+    for group_info in weight_groups:
+        group, weight_shard_id, weight_owner_rank, group_ranks = group_info
+        in_group = rank in group_ranks
+        if in_group:
+            if rank == weight_owner_rank:
+                weight_shard = weight_shards[weight_shard_id].to(gpu_id)
+            else:
+                weight_shard = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
 
-        # Compute partial results
-        local_result += weight_shard @ input_shard.T
+            # Start timing
+            start_time = time.perf_counter()
+            # Broadcast the tensor
+            dist.broadcast(tensor=weight_shard, src=weight_owner_rank, group=group)
+            # End timing
+            communication_time = time.perf_counter() - start_time
+
+            # Update communication time if this process needs the shard
+            if weight_shard_id in required_weight_shards:
+                if node_id != weight_owner_rank // num_gpus_per_node:
+                    inter_node_time += communication_time
+                else:
+                    intra_node_time += communication_time
+                received_weight_shards[weight_shard_id] = weight_shard
+    
+    # Broadcast input shards
+    input_groups = []
+    for input_shard_id in range(4):
+        input_owner_rank = input_shard_id_to_rank[input_shard_id]
+        ranks_needing_input_shard = [
+            r for r in range(world_size) if input_shard_id in get_required_input_shards(r, order)
+        ]
+        if input_owner_rank not in ranks_needing_input_shard:
+            ranks_needing_input_shard.append(input_owner_rank)
+        ranks_needing_input_shard.sort()
+        group = dist.new_group(ranks=ranks_needing_input_shard)
+        input_groups.append((group, input_shard_id, input_owner_rank, ranks_needing_input_shard))
+
+
+    for group_info in input_groups:
+        group, input_shard_id, input_owner_rank, group_ranks = group_info
+        in_group = rank in group_ranks
+        if in_group:
+            if rank == input_owner_rank:
+                input_shard = input_shards[input_shard_id].to(gpu_id)
+            else:
+                input_shard = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
+
+            # Start timing
+            start_time = time.perf_counter()
+            # Broadcast the tensor
+            dist.broadcast(tensor=input_shard, src=input_owner_rank, group=group)
+            # End timing
+            communication_time = time.perf_counter() - start_time
+
+            # Update communication time if this process needs the shard
+            if input_shard_id in required_input_shards:
+                if node_id != input_owner_rank // num_gpus_per_node:
+                    inter_node_time += communication_time
+                else:
+                    intra_node_time += communication_time
+                received_input_shards[input_shard_id] = input_shard
+
+
+    # Perform computation
+    for weight_shard_id in required_weight_shards:
+        weight_shard = received_weight_shards[weight_shard_id]
+        for input_shard_id in required_input_shards:
+            input_shard = received_input_shards[input_shard_id]
+            local_result += weight_shard @ input_shard.T
 
     # Log results for this process
-    results[gpu_id] = {
-        "rank": rank,
-        "local_result": local_result,
-        "communication_cost": communication_cost,
-    }
+    communication_times = torch.tensor(
+        [inter_node_time, intra_node_time], dtype=torch.float32, device=f"cuda:{gpu_id}"
+    )
+    gather_communication_times(communication_times, rank, world_size)
+
 
     # Finalize process group
     dist.barrier()
-    dist.destroy_process_group()
+    # dist.destroy_process_group()
+
+    
+
 
 # Main function to spawn processes
 def simulate_matmul_with_distributed_sharding(order):
@@ -104,26 +211,24 @@ def simulate_matmul_with_distributed_sharding(order):
     # input_shards = [shard.to(f"cuda:{gpu_id}") for shard in input_shards]
     # input_to_gpu = {gpu: input_shards[idx].to(f"cuda:{gpu}") for idx, gpu in enumerate(order)}
 
-    manager = mp.Manager()
-    results = manager.dict()
     # run_process,
     #     args=(world_size, num_gpus_per_node, results, shard_dim, weight_shards, input_shards),
     #     nprocs=world_size,
     #     join=True,
-    run_process(rank=int(os.environ["RANK"]), world_size=world_size, 
-                num_gpus_per_node=num_gpus_per_node, results=results, 
-                shard_dim=shard_dim, weight_shards=weight_shards, input_shards=input_shards)
+    run_process(shard_dim=shard_dim, weight_shards=weight_shards, input_shards=input_shards,
+                order=order)
 
 
-    # Display results
-    for gpu_id, res in results.items():
-        print(f"GPU {gpu_id} (Rank {res['rank']}):")
-        print(f"Local Result:\n{res['local_result']}")
-        print(f"Communication Cost: {res['communication_cost']}")
-        print("-" * 50)
 
 if __name__ == "__main__":
     input_orders = list(itertools.permutations(range(4)))
     for order in input_orders:
-        print(order)
+        print('order', order)
         simulate_matmul_with_distributed_sharding(order)
+        dist.barrier()
+        dist.destroy_process_group()
+
+        torch.cuda.empty_cache()
+    
+# if __name__ == "__main__":
+#     init_process()
