@@ -4,6 +4,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 import itertools
 import time
+import argparse
 
 
 def gather_communication_times(communication_times, rank, world_size):
@@ -34,7 +35,7 @@ def gather_communication_times(communication_times, rank, world_size):
         print("-" * 50)
 
 
-def run_process(shard_dim, weight_shards, input_shards, order):
+def run_process(shard_dim, weight_shards, input_shards):
     dist.init_process_group(backend="nccl")
     rank = dist.get_rank()
     
@@ -60,6 +61,7 @@ def run_process(shard_dim, weight_shards, input_shards, order):
         2: 2,
         3: 3
     }
+    order = [int(i) for i in os.environ['ORDER'].split(',')]
     input_shard_id_to_rank = {input_shard_id: rank for rank, input_shard_id in enumerate(order)}
 
     # Determine which shards this process requires
@@ -77,14 +79,14 @@ def run_process(shard_dim, weight_shards, input_shards, order):
 
     received_weight_shards = {}
     received_input_shards = {}
+
     # Allocate space for local result
     local_result = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
 
-    # Broadcast weight shards
     world_size = 4
 
     weight_groups = []
-    for weight_shard_id in range(4):
+    for weight_shard_id in range(world_size):
         weight_owner_rank = weight_shard_id_to_rank[weight_shard_id]
         ranks_needing_weight_shard = [
             r for r in range(world_size) if weight_shard_id in get_required_weight_shards(r)
@@ -110,6 +112,7 @@ def run_process(shard_dim, weight_shards, input_shards, order):
             dist.broadcast(tensor=weight_shard, src=weight_owner_rank, group=group)
             # End timing
             communication_time = time.perf_counter() - start_time
+            print(communication_time)
 
             # Update communication time if this process needs the shard
             if weight_shard_id in required_weight_shards:
@@ -121,7 +124,7 @@ def run_process(shard_dim, weight_shards, input_shards, order):
     
     # Broadcast input shards
     input_groups = []
-    for input_shard_id in range(4):
+    for input_shard_id in range(world_size):
         input_owner_rank = input_shard_id_to_rank[input_shard_id]
         ranks_needing_input_shard = [
             r for r in range(world_size) if input_shard_id in get_required_input_shards(r, order)
@@ -148,6 +151,7 @@ def run_process(shard_dim, weight_shards, input_shards, order):
             dist.broadcast(tensor=input_shard, src=input_owner_rank, group=group)
             # End timing
             communication_time = time.perf_counter() - start_time
+            print(communication_time)
 
             # Update communication time if this process needs the shard
             if input_shard_id in required_input_shards:
@@ -174,18 +178,18 @@ def run_process(shard_dim, weight_shards, input_shards, order):
 
     # Finalize process group
     dist.barrier()
-    # dist.destroy_process_group()
+    dist.destroy_process_group()
 
     
 
 
 # Main function to spawn processes
-def simulate_matmul_with_distributed_sharding(order):
+def simulate_matmul_with_distributed_sharding():
     # Number of GPUs and nodes
     num_nodes = 2
     num_gpus_per_node = 2
     world_size = num_nodes * num_gpus_per_node
-    shard_dim = 512  # Dimension of each shard
+    shard_dim = 4096  # Dimension of each shard
 
     # Dimensions
     total_dim = shard_dim * 2
@@ -215,20 +219,24 @@ def simulate_matmul_with_distributed_sharding(order):
     #     args=(world_size, num_gpus_per_node, results, shard_dim, weight_shards, input_shards),
     #     nprocs=world_size,
     #     join=True,
-    run_process(shard_dim=shard_dim, weight_shards=weight_shards, input_shards=input_shards,
-                order=order)
+    # os.environ['ORDER'] = ','.join(map(str, order))
+    run_process(shard_dim=shard_dim, weight_shards=weight_shards, input_shards=input_shards)
 
 
 
 if __name__ == "__main__":
-    input_orders = list(itertools.permutations(range(4)))
-    for order in input_orders:
-        print('order', order)
-        simulate_matmul_with_distributed_sharding(order)
-        dist.barrier()
-        dist.destroy_process_group()
+    # input_orders = list(itertools.permutations(range(4)))
+    # print(input_orders)
+    # for order in input_orders:
+    #     print('order', order)
 
-        torch.cuda.empty_cache()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--order', type=str, required=True, help='Comma-separated order indices')
+    args = parser.parse_args()
+    os.environ['ORDER'] = args.order
+    simulate_matmul_with_distributed_sharding()
+
+    #     torch.cuda.empty_cache()
     
 # if __name__ == "__main__":
 #     init_process()

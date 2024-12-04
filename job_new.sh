@@ -28,7 +28,24 @@ head_node_ip=$(srun --nodes=1 --ntasks=1 -w "$head_node" hostname --ip-address)
 echo "Head node IP: $head_node_ip"
 
 # Run torchrun with srun
-srun torchrun --nnodes=$SLURM_NNODES --nproc_per_node=2 \
-    --rdzv_id=$SLURM_JOB_ID --rdzv_backend=c10d \
-    --rdzv_endpoint=$head_node_ip:29500 \
-    gpu_2_nodes.py
+orders=(
+    "0,1,2,3"
+    "0,1,3,2"
+    "0,2,1,3"
+    "0,2,3,1"
+    "0,3,1,2"
+    "0,3,2,1"
+    "1,0,2,3"
+)
+
+
+#  (), 
+#  (1, 0, 3, 2), 
+#  (1, 2, 0, 3), (1, 2, 3, 0), (1, 3, 0, 2), (1, 3, 2, 0), (2, 0, 1, 3), (2, 0, 3, 1), (2, 1, 0, 3), (2, 1, 3, 0), (2, 3, 0, 1), (2, 3, 1, 0), (3, 0, 1, 2), (3, 0, 2, 1), (3, 1, 0, 2), (3, 1, 2, 0), (3, 2, 0, 1), (3, 2, 1, 0)]
+
+
+for order in "${orders[@]}"
+do
+    echo "Running order: $order"
+    srun torchrun --nnodes=$SLURM_NNODES --nproc_per_node=2 --rdzv_id=$SLURM_JOB_ID --rdzv_backend=c10d --rdzv_endpoint=$head_node_ip:29500 gpu_2_nodes.py --order $order
+done
