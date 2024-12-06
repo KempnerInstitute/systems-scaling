@@ -94,6 +94,7 @@ def run_process(shard_dim, weight_shards, input_shards):
         if weight_owner_rank not in ranks_needing_weight_shard:
             ranks_needing_weight_shard.append(weight_owner_rank)
         ranks_needing_weight_shard.sort()
+        
         group = dist.new_group(ranks=ranks_needing_weight_shard)
         weight_groups.append((group, weight_shard_id, weight_owner_rank, ranks_needing_weight_shard))
     
@@ -107,9 +108,11 @@ def run_process(shard_dim, weight_shards, input_shards):
                 weight_shard = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
 
             # Start timing
+            print('group', ranks_needing_weight_shard, weight_shard.shape)
             start_time = time.perf_counter()
             # Broadcast the tensor
-            dist.broadcast(tensor=weight_shard, src=weight_owner_rank, group=group)
+            op = dist.broadcast(tensor=weight_shard, src=weight_owner_rank, group=group, async_op=True)
+            op.wait()
             # End timing
             communication_time = time.perf_counter() - start_time
             print(communication_time)
@@ -148,7 +151,8 @@ def run_process(shard_dim, weight_shards, input_shards):
             # Start timing
             start_time = time.perf_counter()
             # Broadcast the tensor
-            dist.broadcast(tensor=input_shard, src=input_owner_rank, group=group)
+            op = dist.broadcast(tensor=input_shard, src=input_owner_rank, group=group, async_op=True)
+            op.wait()
             # End timing
             communication_time = time.perf_counter() - start_time
             print(communication_time)
