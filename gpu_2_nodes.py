@@ -6,6 +6,21 @@ import itertools
 import time
 import argparse
 
+def log_gpu_memory(rank, message, gpu_id):
+    device = torch.device(f'cuda:{gpu_id}')
+    torch.cuda.synchronize(device=device)
+    allocated = torch.cuda.memory_allocated(device=device)
+    reserved = torch.cuda.memory_reserved(device=device)
+    max_allocated = torch.cuda.max_memory_allocated(device=device)
+    max_reserved = torch.cuda.max_memory_reserved(device=device)
+
+    print(f"Rank {rank} - {message}")
+    print(f"Allocated Memory: {allocated / (1024 ** 2):.2f} MB")
+    print(f"Reserved Memory: {reserved / (1024 ** 2):.2f} MB")
+    print(f"Max Allocated Memory: {max_allocated / (1024 ** 2):.2f} MB")
+    print(f"Max Reserved Memory: {max_reserved / (1024 ** 2):.2f} MB")
+    print("-" * 40)
+
 
 def gather_communication_times(communication_times, rank, world_size):
     if rank == 0:
@@ -35,6 +50,16 @@ def gather_communication_times(communication_times, rank, world_size):
         print("-" * 50)
 
 
+def get_required_weight_shards(rank):
+    return [0, 1] if rank < 2 else [2, 3]
+
+
+def get_required_input_shards(rank, order):
+    if rank % 2 == 0:
+        return [order[0], order[1]]
+    else:
+        return [order[2], order[3]]
+
 def run_process(shard_dim, weight_shards, input_shards):
     dist.init_process_group(backend="nccl")
     rank = dist.get_rank()
@@ -59,14 +84,7 @@ def run_process(shard_dim, weight_shards, input_shards):
     input_shard_id_to_rank = {input_shard_id: rank for rank, input_shard_id in enumerate(order)}
 
     # Determine which shards this process requires
-    def get_required_weight_shards(rank):
-        return [0, 1] if rank < 2 else [2, 3]
-
-    def get_required_input_shards(rank, order):
-        if rank % 2 == 0:
-            return [order[0], order[1]]
-        else:
-            return [order[2], order[3]]
+    
 
     required_weight_shards = get_required_weight_shards(rank)
     required_input_shards = get_required_input_shards(rank, order)
@@ -78,6 +96,59 @@ def run_process(shard_dim, weight_shards, input_shards):
     local_result = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
 
     world_size = 4
+
+    # Broadcast input shards
+    input_groups = []
+    for input_shard_id in range(world_size):
+
+        input_owner_rank = input_shard_id_to_rank[input_shard_id]
+
+        ranks_needing_input_shard = [
+            r for r in range(world_size) if input_shard_id in get_required_input_shards(r, order)
+        ]
+        # print(input_shard_id, 'p1', ranks_needing_input_shard)
+        
+        if input_owner_rank not in ranks_needing_input_shard:
+            ranks_needing_input_shard.append(input_owner_rank)
+
+        ranks_needing_input_shard.sort()
+
+        group = dist.new_group(ranks=ranks_needing_input_shard)
+        input_groups.append((group, input_shard_id, input_owner_rank, ranks_needing_input_shard))
+
+    print('input_groups', input_groups)
+    for group_info in input_groups:
+        
+        group, input_shard_id, input_owner_rank, group_ranks = group_info
+        
+        in_group = rank in group_ranks
+        if in_group:
+            if rank == input_owner_rank:
+                input_shard = input_shards[input_shard_id].to(gpu_id)
+            else:
+                input_shard = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
+
+            torch.cuda.synchronize()
+            dist.barrier(group=group)
+
+            start_time = time.perf_counter()
+
+            dist.broadcast(tensor=input_shard, src=input_owner_rank, group=group)
+
+            communication_time = time.perf_counter() - start_time
+            print('input', communication_time)
+
+
+            # Update communication time if this process needs the shard
+            if input_shard_id in required_input_shards:
+                if node_id != input_owner_rank // num_gpus_per_node:
+                    inter_node_time += communication_time
+                else:
+                    intra_node_time += communication_time
+                received_input_shards[input_shard_id] = input_shard
+
+        else:
+            pass
 
     # Broadcast weight shards
     weight_groups = []
@@ -103,11 +174,11 @@ def run_process(shard_dim, weight_shards, input_shards):
 
             torch.cuda.synchronize()
             dist.barrier(group=group)
-            # Start timing
+
             start_time = time.perf_counter()
-            # Broadcast the tensor
+
             dist.broadcast(tensor=weight_shard, src=weight_owner_rank, group=group)
-            # End timing
+
             communication_time = time.perf_counter() - start_time
             print('weight', communication_time)
 
@@ -118,66 +189,6 @@ def run_process(shard_dim, weight_shards, input_shards):
                 else:
                     intra_node_time += communication_time
                 received_weight_shards[weight_shard_id] = weight_shard
-
-    
-    # Broadcast input shards
-    input_groups = []
-    for input_shard_id in range(world_size):
-        input_owner_rank = input_shard_id_to_rank[input_shard_id]
-        ranks_needing_input_shard = [
-            r for r in range(world_size) if input_shard_id in get_required_input_shards(r, order)
-        ]
-        if input_owner_rank not in ranks_needing_input_shard:
-            ranks_needing_input_shard.append(input_owner_rank)
-        ranks_needing_input_shard.sort()
-        print('ranks_needing_input_shard', ranks_needing_input_shard)
-        group = dist.new_group(ranks=ranks_needing_input_shard)
-        input_groups.append((group, input_shard_id, input_owner_rank, ranks_needing_input_shard))
-
-
-    for group_info in input_groups:
-        group, input_shard_id, input_owner_rank, group_ranks = group_info
-        print(f"Group: {group}, Rank: {rank}, input_shard_id: {input_shard_id}")
-    
-        in_group = rank in group_ranks
-        print(f"Rank {rank} in group {group}: {in_group}")
-    
-        if in_group:
-            if rank == input_owner_rank:
-                input_shard = input_shards[input_shard_id].to(gpu_id)
-            else:
-                input_shard = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
-        
-            print(f"Before barrier: Rank {rank} is entering the barrier with group {group}")
-            torch.cuda.synchronize()
-            dist.barrier(group=group)
-            print(f"After barrier: Rank {rank} passed the barrier with group {group}")
-        
-            # Start timing
-            start_time = time.perf_counter()
-            # Broadcast the tensor
-            dist.broadcast(tensor=input_shard, src=input_owner_rank, group=group)
-            # End timing
-            communication_time = time.perf_counter() - start_time
-            print(f"input communication time: {communication_time}")
-
-            # Update communication time if this process needs the shard
-            if input_shard_id in required_input_shards:
-                if node_id != input_owner_rank // num_gpus_per_node:
-                    inter_node_time += communication_time
-                else:
-                    intra_node_time += communication_time
-
-                received_input_shards[input_shard_id] = input_shard
-                print(f"Received shard {input_shard_id} at rank {rank}")
-
-
-
-    print('-------------------')
-
-    
-    
-    
 
 
     # Perform computation
