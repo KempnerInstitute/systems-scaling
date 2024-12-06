@@ -49,12 +49,6 @@ def run_process(shard_dim, weight_shards, input_shards):
     intra_node_time = 0
 
     # Map shard IDs to process ranks
-    shard_id_to_rank = {
-        0: 0,
-        1: 1,
-        2: 2,
-        3: 3
-    }
     weight_shard_id_to_rank = {
         0: 0,
         1: 1,
@@ -85,6 +79,7 @@ def run_process(shard_dim, weight_shards, input_shards):
 
     world_size = 4
 
+    # Broadcast weight shards
     weight_groups = []
     for weight_shard_id in range(world_size):
         weight_owner_rank = weight_shard_id_to_rank[weight_shard_id]
@@ -94,7 +89,6 @@ def run_process(shard_dim, weight_shards, input_shards):
         if weight_owner_rank not in ranks_needing_weight_shard:
             ranks_needing_weight_shard.append(weight_owner_rank)
         ranks_needing_weight_shard.sort()
-        
         group = dist.new_group(ranks=ranks_needing_weight_shard)
         weight_groups.append((group, weight_shard_id, weight_owner_rank, ranks_needing_weight_shard))
     
@@ -107,15 +101,15 @@ def run_process(shard_dim, weight_shards, input_shards):
             else:
                 weight_shard = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
 
+            torch.cuda.synchronize()
+            dist.barrier(group=group)
             # Start timing
-            print('group', ranks_needing_weight_shard, weight_shard.shape)
             start_time = time.perf_counter()
             # Broadcast the tensor
-            op = dist.broadcast(tensor=weight_shard, src=weight_owner_rank, group=group, async_op=True)
-            op.wait()
+            dist.broadcast(tensor=weight_shard, src=weight_owner_rank, group=group)
             # End timing
             communication_time = time.perf_counter() - start_time
-            print(communication_time)
+            print('weight', communication_time)
 
             # Update communication time if this process needs the shard
             if weight_shard_id in required_weight_shards:
@@ -124,6 +118,7 @@ def run_process(shard_dim, weight_shards, input_shards):
                 else:
                     intra_node_time += communication_time
                 received_weight_shards[weight_shard_id] = weight_shard
+
     
     # Broadcast input shards
     input_groups = []
@@ -135,27 +130,36 @@ def run_process(shard_dim, weight_shards, input_shards):
         if input_owner_rank not in ranks_needing_input_shard:
             ranks_needing_input_shard.append(input_owner_rank)
         ranks_needing_input_shard.sort()
+        print('ranks_needing_input_shard', ranks_needing_input_shard)
         group = dist.new_group(ranks=ranks_needing_input_shard)
         input_groups.append((group, input_shard_id, input_owner_rank, ranks_needing_input_shard))
 
 
     for group_info in input_groups:
         group, input_shard_id, input_owner_rank, group_ranks = group_info
+        print(f"Group: {group}, Rank: {rank}, input_shard_id: {input_shard_id}")
+    
         in_group = rank in group_ranks
+        print(f"Rank {rank} in group {group}: {in_group}")
+    
         if in_group:
             if rank == input_owner_rank:
                 input_shard = input_shards[input_shard_id].to(gpu_id)
             else:
                 input_shard = torch.zeros(shard_dim, shard_dim, device=f"cuda:{gpu_id}")
-
+        
+            print(f"Before barrier: Rank {rank} is entering the barrier with group {group}")
+            torch.cuda.synchronize()
+            dist.barrier(group=group)
+            print(f"After barrier: Rank {rank} passed the barrier with group {group}")
+        
             # Start timing
             start_time = time.perf_counter()
             # Broadcast the tensor
-            op = dist.broadcast(tensor=input_shard, src=input_owner_rank, group=group, async_op=True)
-            op.wait()
+            dist.broadcast(tensor=input_shard, src=input_owner_rank, group=group)
             # End timing
             communication_time = time.perf_counter() - start_time
-            print(communication_time)
+            print(f"input communication time: {communication_time}")
 
             # Update communication time if this process needs the shard
             if input_shard_id in required_input_shards:
@@ -163,7 +167,17 @@ def run_process(shard_dim, weight_shards, input_shards):
                     inter_node_time += communication_time
                 else:
                     intra_node_time += communication_time
+
                 received_input_shards[input_shard_id] = input_shard
+                print(f"Received shard {input_shard_id} at rank {rank}")
+
+
+
+    print('-------------------')
+
+    
+    
+    
 
 
     # Perform computation
