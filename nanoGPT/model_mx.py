@@ -16,7 +16,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 from mx import Linear, LayerNorm
-# from mx import 
+from mx import gelu, imd_split, simd_add
 
 
          
@@ -33,13 +33,13 @@ from mx import Linear, LayerNorm
 
 class CausalSelfAttention(nn.Module):
 
-    def __init__(self, config):
+    def __init__(self, config, mx_specs):
         super().__init__()
         assert config.n_embd % config.n_head == 0
         # key, query, value projections for all heads, but in a batch
-        self.c_attn = Linear(config.n_embd, 3 * config.n_embd, bias=config.bias)
+        self.c_attn = Linear(config.n_embd, 3 * config.n_embd, mx_specs=mx_specs, bias=config.bias)
         # output projection
-        self.c_proj = Linear(config.n_embd, config.n_embd, bias=config.bias)
+        self.c_proj = Linear(config.n_embd, config.n_embd, mx_specs=mx_specs, bias=config.bias)
         # regularization
         self.attn_dropout = nn.Dropout(config.dropout)
         self.resid_dropout = nn.Dropout(config.dropout)
@@ -98,10 +98,10 @@ class MLP(nn.Module):
 
 class Block(nn.Module):
 
-    def __init__(self, config):
+    def __init__(self, config, mx_specs):
         super().__init__()
         self.ln_1 = LayerNorm(config.n_embd) # , bias=config.bias
-        self.attn = CausalSelfAttention(config)
+        self.attn = CausalSelfAttention(config, mx_specs)
         self.ln_2 = LayerNorm(config.n_embd) # , bias=config.bias
         self.mlp = MLP(config)
 
@@ -133,10 +133,10 @@ class GPT(nn.Module):
             wte = nn.Embedding(config.vocab_size, config.n_embd),
             wpe = nn.Embedding(config.block_size, config.n_embd),
             drop = nn.Dropout(config.dropout),
-            h = nn.ModuleList([Block(config) for _ in range(config.n_layer)]),
+            h = nn.ModuleList([Block(config, self.mx_specs) for _ in range(config.n_layer)]),
             ln_f = LayerNorm(config.n_embd,  mx_specs=mx_specs), # bias=config.bias,
         ))
-        self.lm_head = Linear(config.n_embd, config.vocab_size, bias=False)
+        self.lm_head = Linear(config.n_embd, config.vocab_size, mx_specs=mx_specs, bias=False)
         # with weight tying when using torch.compile() some warnings get generated:
         # "UserWarning: functional_call was passed multiple values for tied weights.
         # This behavior is deprecated and will be an error in future versions"
