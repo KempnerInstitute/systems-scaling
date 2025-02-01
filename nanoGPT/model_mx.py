@@ -16,7 +16,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 from mx import Linear, LayerNorm
-from mx import gelu, imd_split, simd_add
+from mx import gelu, simd_split, simd_add
 
 
          
@@ -84,9 +84,9 @@ class MLP(nn.Module):
 
     def __init__(self, config, mx_specs):
         super().__init__()
-        self.c_fc    = Linear(config.n_embd, 4 * config.n_embd, bias=config.bias)
+        self.c_fc    = Linear(config.n_embd, 4 * config.n_embd, mx_specs=mx_specs, bias=config.bias)
         # self.gelu    = nn.GELU()
-        self.c_proj  = Linear(4 * config.n_embd, config.n_embd, bias=config.bias)
+        self.c_proj  = Linear(4 * config.n_embd, config.n_embd, mx_specs=mx_specs, bias=config.bias)
         self.dropout = nn.Dropout(config.dropout)
 
         self.mx_specs = mx_specs
@@ -102,10 +102,10 @@ class Block(nn.Module):
 
     def __init__(self, config, mx_specs):
         super().__init__()
-        self.ln_1 = LayerNorm(config.n_embd) # , bias=config.bias
+        self.ln_1 = LayerNorm(config.n_embd, mx_specs=mx_specs) # , bias=config.bias
         self.attn = CausalSelfAttention(config, mx_specs)
-        self.ln_2 = LayerNorm(config.n_embd) # , bias=config.bias
-        self.mlp = MLP(config)
+        self.ln_2 = LayerNorm(config.n_embd, mx_specs=mx_specs) # , bias=config.bias
+        self.mlp = MLP(config, mx_specs)
 
     def forward(self, x):
         x = x + self.attn(self.ln_1(x))
@@ -181,13 +181,21 @@ class GPT(nn.Module):
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
 
+        # Split the input into two paths
+        idx, residual = simd_split(idx, mx_specs=self.mx_specs)
+
         # forward the GPT model itself
         tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, n_embd)
         pos_emb = self.transformer.wpe(pos) # position embeddings of shape (t, n_embd)
+
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
             x = block(x)
         x = self.transformer.ln_f(x)
+
+        # Residual Add
+        import pdb; pdb.set_trace()
+        x = simd_add(residual, x, mx_specs=self.mx_specs)
 
         if targets is not None:
             # if we are given some desired targets also calculate the loss
