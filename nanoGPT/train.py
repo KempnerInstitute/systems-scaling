@@ -153,17 +153,17 @@ model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=bloc
 # MXFP8_e5m2 matmuls with bfloat16 vector ops, forward pass only
 
 
-mx_specs = {
-        'w_elem_format': 'fp6_e3m2',
-        'a_elem_format': 'fp6_e3m2',
-        'block_size': 32,
-        'bfloat': 16,
-        'custom_cuda': True,
-        # For quantization-aware finetuning, do backward pass in FP32
-        'quantize_backprop': True,
-    }
-mx_specs = finalize_mx_specs(mx_specs)
-mx_mapping.inject_pyt_ops(mx_specs)
+# mx_specs = {
+#         'w_elem_format': 'fp6_e3m2',
+#         'a_elem_format': 'fp6_e3m2',
+#         'block_size': 32,
+#         'bfloat': 16,
+#         'custom_cuda': True,
+#         # For quantization-aware finetuning, do backward pass in FP32
+#         'quantize_backprop': True,
+#     }
+# mx_specs = finalize_mx_specs(mx_specs)
+# mx_mapping.inject_pyt_ops(mx_specs)
 
 if init_from == 'scratch':
     # init a new model from scratch
