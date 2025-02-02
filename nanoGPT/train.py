@@ -27,7 +27,10 @@ import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
 
-from model_mx import GPTConfig, GPT
+from model import GPTConfig, GPT
+
+from mx import finalize_mx_specs
+from mx import mx_mapping
 
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
@@ -148,15 +151,19 @@ model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=bloc
                   bias=bias, vocab_size=None, dropout=dropout) # start with model_args from command line
 
 # MXFP8_e5m2 matmuls with bfloat16 vector ops, forward pass only
-import mx
-mx_specs = mx.MxSpecs()
 
-mx_specs['scale_bits'] = 8
-mx_specs['w_elem_format'] = 'fp8_e5m2'
-mx_specs['a_elem_format'] = 'fp8_e5m2'
-mx_specs['block_size'] = 32
-mx_specs['bfloat'] = 16
-mx_specs['custom_cuda'] = True
+
+mx_specs = {
+        'w_elem_format': 'fp6_e3m2',
+        'a_elem_format': 'fp6_e3m2',
+        'block_size': 32,
+        'bfloat': 16,
+        'custom_cuda': True,
+        # For quantization-aware finetuning, do backward pass in FP32
+        'quantize_backprop': True,
+    }
+mx_specs = finalize_mx_specs(mx_specs)
+mx_mapping.inject_pyt_ops(mx_specs)
 
 if init_from == 'scratch':
     # init a new model from scratch
@@ -166,7 +173,8 @@ if init_from == 'scratch':
         print("defaulting to vocab_size of GPT-2 to 50304 (50257 rounded up for efficiency)")
     model_args['vocab_size'] = meta_vocab_size if meta_vocab_size is not None else 50304
     gptconf = GPTConfig(**model_args)
-    model = GPT(gptconf, mx_specs)
+    # model = GPT(gptconf, mx_specs)
+    model = GPT(gptconf)
 elif init_from == 'resume':
     print(f"Resuming training from {out_dir}")
     # resume training from a checkpoint.

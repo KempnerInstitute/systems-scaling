@@ -15,8 +15,8 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
-from mx import Linear, LayerNorm
-from mx import gelu, simd_split, simd_add
+from mx import Linear, LayerNorm, matmul
+from mx import gelu, softmax, simd_split, simd_add
 
 
          
@@ -36,6 +36,8 @@ class CausalSelfAttention(nn.Module):
     def __init__(self, config, mx_specs):
         super().__init__()
         assert config.n_embd % config.n_head == 0
+
+        self.mx_specs = mx_specs
         # key, query, value projections for all heads, but in a batch
         self.c_attn = Linear(config.n_embd, 3 * config.n_embd, mx_specs=mx_specs, bias=config.bias)
         # output projection
@@ -58,7 +60,9 @@ class CausalSelfAttention(nn.Module):
         B, T, C = x.size() # batch size, sequence length, embedding dimensionality (n_embd)
 
         # calculate query, key, values for all heads in batch and move head forward to be the batch dim
-        q, k, v  = self.c_attn(x).split(self.n_embd, dim=2)
+        x = self.c_attn(x)
+        q, k, v = x.split(self.n_embd, dim=2)
+  
         k = k.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         q = q.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
         v = v.view(B, T, self.n_head, C // self.n_head).transpose(1, 2) # (B, nh, T, hs)
@@ -69,11 +73,13 @@ class CausalSelfAttention(nn.Module):
             y = torch.nn.functional.scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=self.dropout if self.training else 0, is_causal=True)
         else:
             # manual implementation of attention
-            att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+            # att = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+            att = (matmul(q, k.transpose(-2, -1))) * (1.0 / math.sqrt(k.size(-1)))
             att = att.masked_fill(self.bias[:,:,:T,:T] == 0, float('-inf'))
-            att = F.softmax(att, dim=-1)
+            att = softmax(att, dim=-1, mx_specs=self.mx_specs)
             att = self.attn_dropout(att)
-            y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+            # y = att @ v # (B, nh, T, T) x (B, nh, T, hs) -> (B, nh, T, hs)
+            y = matmul(att, v, mx_specs=self.mx_specs)
         y = y.transpose(1, 2).contiguous().view(B, T, C) # re-assemble all head outputs side by side
 
         # output projection
@@ -93,7 +99,7 @@ class MLP(nn.Module):
 
     def forward(self, x):
         x = self.c_fc(x)
-        x = gelu(x, self.mx_specs)
+        x = gelu(x, mx_specs=self.mx_specs)
         x = self.c_proj(x)
         x = self.dropout(x)
         return x
@@ -102,14 +108,21 @@ class Block(nn.Module):
 
     def __init__(self, config, mx_specs):
         super().__init__()
+        self.mx_specs = mx_specs
         self.ln_1 = LayerNorm(config.n_embd, mx_specs=mx_specs) # , bias=config.bias
         self.attn = CausalSelfAttention(config, mx_specs)
         self.ln_2 = LayerNorm(config.n_embd, mx_specs=mx_specs) # , bias=config.bias
         self.mlp = MLP(config, mx_specs)
 
     def forward(self, x):
-        x = x + self.attn(self.ln_1(x))
-        x = x + self.mlp(self.ln_2(x))
+        x, residual = simd_split(x, mx_specs=self.mx_specs)
+        # x = x + self.attn(self.ln_1(x))
+        x = simd_add(residual, self.attn(self.ln_1(x)), mx_specs=self.mx_specs)
+        # import pdb; pdb.set_trace()
+
+        x, residual = simd_split(x, mx_specs=self.mx_specs)
+        # x = x + self.mlp(self.ln_2(x))
+        x = simd_add(residual, self.mlp(self.ln_2(x)), mx_specs=self.mx_specs)
         return x
 
 @dataclass
@@ -180,32 +193,27 @@ class GPT(nn.Module):
         b, t = idx.size()
         assert t <= self.config.block_size, f"Cannot forward sequence of length {t}, block size is only {self.config.block_size}"
         pos = torch.arange(0, t, dtype=torch.long, device=device) # shape (t)
-
-        # Split the input into two paths
-        idx, residual = simd_split(idx, mx_specs=self.mx_specs)
-
+        
         # forward the GPT model itself
         tok_emb = self.transformer.wte(idx) # token embeddings of shape (b, t, n_embd)
         pos_emb = self.transformer.wpe(pos) # position embeddings of shape (t, n_embd)
-
+          
         x = self.transformer.drop(tok_emb + pos_emb)
         for block in self.transformer.h:
             x = block(x)
         x = self.transformer.ln_f(x)
-
-        # Residual Add
-        import pdb; pdb.set_trace()
-        x = simd_add(residual, x, mx_specs=self.mx_specs)
-
+        # import pdb; pdb.set_trace() 
         if targets is not None:
             # if we are given some desired targets also calculate the loss
             logits = self.lm_head(x)
+            # import pdb; pdb.set_trace()
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1)
         else:
             # inference-time mini-optimization: only forward the lm_head on the very last position
             logits = self.lm_head(x[:, [-1], :]) # note: using list [-1] to preserve the time dim
             loss = None
 
+        # import pdb; pdb.set_trace()
         return logits, loss
 
     def crop_block_size(self, block_size):
