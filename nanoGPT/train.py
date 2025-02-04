@@ -26,13 +26,14 @@ import numpy as np
 import torch
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.distributed import init_process_group, destroy_process_group
+import hydra
 
 from model import GPTConfig, GPT
 
 from mx import finalize_mx_specs
 from mx import mx_mapping
 
-from tmrc.tmrc_core.training import data
+from tmrc.tmrc_core.training import data, train
 
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
@@ -119,25 +120,30 @@ ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=
 # poor man's data loader
 data_dir = os.path.join('data', dataset)
 
-def get_batch(split):
-    # We recreate np.memmap every batch to avoid a memory leak, as per
-    # https://stackoverflow.com/questions/45132940/numpy-memmap-memory-usage-want-to-iterate-once/61472122#61472122
-    if split == 'train':
-        data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
-    else:
-        data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
-    ix = torch.randint(len(data) - block_size, (batch_size,))
-    x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
-    y = torch.stack([torch.from_numpy((data[i+1:i+1+block_size]).astype(np.int64)) for i in ix])
-    if device_type == 'cuda':
-        # pin arrays x,y, which allows us to move them to GPU asynchronously (non_blocking=True)
-        x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
-    else:
-        x, y = x.to(device), y.to(device)
-    return x, y
+# def get_batch(split):
+#     # We recreate np.memmap every batch to avoid a memory leak, as per
+#     # https://stackoverflow.com/questions/45132940/numpy-memmap-memory-usage-want-to-iterate-once/61472122#61472122
+#     if split == 'train':
+#         data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
+#     else:
+#         data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
+#     ix = torch.randint(len(data) - block_size, (batch_size,))
+#     x = torch.stack([torch.from_numpy((data[i:i+block_size]).astype(np.int64)) for i in ix])
+#     y = torch.stack([torch.from_numpy((data[i+1:i+1+block_size]).astype(np.int64)) for i in ix])
+#     if device_type == 'cuda':
+#         # pin arrays x,y, which allows us to move them to GPU asynchronously (non_blocking=True)
+#         x, y = x.pin_memory().to(device, non_blocking=True), y.pin_memory().to(device, non_blocking=True)
+#     else:
+#         x, y = x.to(device), y.to(device)
+#     return x, y
 
-train_loader, val_loader = data.create_dataloaders(config)
+config_path, config_name = train.get_config_path()
+hydra.initialize(version_base=None, config_path=config_path)
+dataset_config = hydra.compose(config_name=config_name)
+
+train_loader, val_loader = data.create_dataloaders(dataset_config)
 print(f"There are {len(train_loader)} batches in the training set")
+train_iterator, val_iterator = iter(train_loader), iter(val_loader)
 
 
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
@@ -246,7 +252,22 @@ def estimate_loss():
     for split in ['train', 'val']:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
-            X, Y = get_batch(split)
+            # X, Y = get_batch(split)
+            if split == 'train':
+                X, Y = next(train_iterator)
+            else:
+                X, Y = next(val_iterator)
+
+            tok_ids, doc_ids = sample.get("token_ids").long(), sample.get("document_ids").long()
+            Y = torch.roll(tok_ids, shifts=-1, dims=1)
+            Y[:, -1] = -100 
+            if device_type == 'cuda':
+                X = tok_ids.to(device_index=0)
+                Y = Y.to(device_index=0)
+                doc_ids = doc_ids.to(device_index=0)
+            else:
+                X = tok_ids
+
             with ctx:
                 logits, loss = model(X, Y)
             losses[k] = loss.item()
@@ -274,7 +295,18 @@ if wandb_log and master_process:
     wandb.init(project=wandb_project, name=wandb_run_name, config=config)
 
 # training loop
-X, Y = get_batch('train') # fetch the very first batch
+# X, Y = get_batch('train') # fetch the very first batch
+sample = next(train_iterator)
+tok_ids, doc_ids = sample.get("token_ids").long(), sample.get("document_ids").long()
+Y = torch.roll(tok_ids, shifts=-1, dims=1)
+Y[:, -1] = -100 
+if device_type == 'cuda':
+    X = tok_ids.to(device_index=0)
+    Y = Y.to(device_index=0)
+    doc_ids = doc_ids.to(device_index=0)
+else:
+    X = tok_ids
+
 t0 = time.time()
 local_iter_num = 0 # number of iterations in the lifetime of this process
 raw_model = model.module if ddp else model # unwrap DDP container if needed
@@ -316,7 +348,9 @@ while True:
 
     # forward backward update, with optional gradient accumulation to simulate larger batch size
     # and using the GradScaler if data type is float16
+    # for batch_idx, sample in enumerate(train_loader):
     for micro_step in range(gradient_accumulation_steps):
+
         if ddp:
             # in DDP training we only need to sync gradients at the last micro step.
             # the official way to do this is with model.no_sync() context manager, but
@@ -327,7 +361,22 @@ while True:
             logits, loss = model(X, Y)
             loss = loss / gradient_accumulation_steps # scale the loss to account for gradient accumulation
         # immediately async prefetch next batch while model is doing the forward pass on the GPU
-        X, Y = get_batch('train')
+        # X, Y = get_batch('train')
+        sample = next(train_iterator)
+        tok_ids, doc_ids = sample.get("token_ids").long(), sample.get("document_ids").long()
+
+        Y = torch.roll(tok_ids, shifts=-1, dims=1)
+        Y[:, -1] = -100 
+
+        if device_type == 'cuda':
+            X = tok_ids.to(device_index=0)
+            Y = Y.to(device_index=0)
+            doc_ids = doc_ids.to(device_index=0)
+        else:
+            X = tok_ids
+     
+        optimizer.zero_grad()
+
         # backward pass, with gradient scaling if training in fp16
         loss.backward()
         # scaler.scale(loss).backward()
