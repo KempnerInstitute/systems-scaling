@@ -32,6 +32,8 @@ from model import GPTConfig, GPT
 from mx import finalize_mx_specs
 from mx import mx_mapping
 
+from tmrc.tmrc_core.training import data
+
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
 # I/O
@@ -116,6 +118,7 @@ ctx = nullcontext() if device_type == 'cpu' else torch.amp.autocast(device_type=
 
 # poor man's data loader
 data_dir = os.path.join('data', dataset)
+
 def get_batch(split):
     # We recreate np.memmap every batch to avoid a memory leak, as per
     # https://stackoverflow.com/questions/45132940/numpy-memmap-memory-usage-want-to-iterate-once/61472122#61472122
@@ -132,6 +135,10 @@ def get_batch(split):
     else:
         x, y = x.to(device), y.to(device)
     return x, y
+
+train_loader, val_loader = data.create_dataloaders(config)
+print(f"There are {len(train_loader)} batches in the training set")
+
 
 # init these up here, can override if init_from='resume' (i.e. from a checkpoint)
 iter_num = 0
@@ -153,17 +160,17 @@ model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=bloc
 # MXFP8_e5m2 matmuls with bfloat16 vector ops, forward pass only
 
 
-# mx_specs = {
-#         'w_elem_format': 'fp6_e3m2',
-#         'a_elem_format': 'fp6_e3m2',
-#         'block_size': 32,
-#         'bfloat': 16,
-#         'custom_cuda': True,
-#         # For quantization-aware finetuning, do backward pass in FP32
-#         'quantize_backprop': True,
-#     }
-# mx_specs = finalize_mx_specs(mx_specs)
-# mx_mapping.inject_pyt_ops(mx_specs)
+mx_specs = {
+        'w_elem_format': 'fp6_e3m2',
+        'a_elem_format': 'fp6_e3m2',
+        'block_size': 32,
+        'bfloat': 16,
+        'custom_cuda': True,
+        # For quantization-aware finetuning, do backward pass in FP32
+        'quantize_backprop': True,
+    }
+mx_specs = finalize_mx_specs(mx_specs)
+mx_mapping.inject_pyt_ops(mx_specs)
 
 if init_from == 'scratch':
     # init a new model from scratch
