@@ -255,7 +255,7 @@ def estimate_loss():
     for split in ['train', 'val']:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
-            # X, Y = get_batch(split)
+            x, y = get_batch(split)
 
             if split == 'train':
                 X, Y = next(train_iterator)
@@ -273,6 +273,7 @@ def estimate_loss():
             else:
                 X = tok_ids
 
+            import pdb; pdb.set_trace()
             with ctx:
                 logits, loss = model(X, Y)
             
