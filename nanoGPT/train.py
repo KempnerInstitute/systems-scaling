@@ -273,7 +273,6 @@ def estimate_loss():
             else:
                 X = tok_ids
 
-            import pdb; pdb.set_trace()
             with ctx:
                 logits, loss = model(X, Y)
             
