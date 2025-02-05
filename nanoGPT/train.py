@@ -262,9 +262,9 @@ def estimate_loss():
             Y = torch.roll(tok_ids, shifts=-1, dims=1)
             Y[:, -1] = -100 
             if device_type == 'cuda':
-                X = tok_ids.to(device_index=0)
-                Y = Y.to(device_index=0)
-                doc_ids = doc_ids.to(device_index=0)
+                X = tok_ids.to(device)
+                Y = Y.to(device)
+                doc_ids = doc_ids.to(device)
             else:
                 X = tok_ids
 
@@ -301,9 +301,9 @@ tok_ids, doc_ids = sample.get("token_ids").long(), sample.get("document_ids").lo
 Y = torch.roll(tok_ids, shifts=-1, dims=1)
 Y[:, -1] = -100 
 if device_type == 'cuda':
-    X = tok_ids.to(device_index=0)
-    Y = Y.to(device_index=0)
-    doc_ids = doc_ids.to(device_index=0)
+    X = tok_ids.to(device)
+    Y = Y.to(device)
+    doc_ids = doc_ids.to(device)
 else:
     X = tok_ids
 
@@ -369,9 +369,9 @@ while True:
         Y[:, -1] = -100 
 
         if device_type == 'cuda':
-            X = tok_ids.to(device_index=0)
-            Y = Y.to(device_index=0)
-            doc_ids = doc_ids.to(device_index=0)
+            X = tok_ids.to(device)
+            Y = Y.to(device)
+            doc_ids = doc_ids.to(device)
         else:
             X = tok_ids
      
