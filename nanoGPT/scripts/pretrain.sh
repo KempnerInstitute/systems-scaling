@@ -4,7 +4,7 @@
 #SBATCH -n 1 # Number of cores
 #SBATCH -p kempner_h100
 #SBATCH -t 2-23:00
-#SBATCH --job-name=evaluate_llm_rollout
+#SBATCH --job-name=pretrain_gpt
 #SBATCH --output=log/output-%j.out
 #SBATCH --error=log/error-%j.err
 #SBATCH --cpus-per-task=64
@@ -20,3 +20,5 @@ module load gcc/12.2.0-fasrc01s
 
 # Training on single node
 torchrun --standalone --nproc_per_node=4 train.py
+
+# Training on multi nodes

@@ -271,7 +271,6 @@ def estimate_loss():
                 Y = Y.to(device)
                 doc_ids = doc_ids.to(device)
             else:
-                
                 X = tok_ids
 
             with ctx:
@@ -393,6 +392,7 @@ while True:
     # scaler.step(optimizer)
     # scaler.update()
     # flush the gradients as soon as we can, no need for this memory anymore
+    optimizer.step()
     optimizer.zero_grad(set_to_none=True)
 
     # timing and logging
