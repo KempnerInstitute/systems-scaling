@@ -46,8 +46,8 @@ eval_only = False # if True, script exits right after the first eval
 always_save_checkpoint = True # if True, always save a checkpoint after each eval
 init_from = 'scratch' # 'scratch' or 'resume' or 'gpt2*'
 # wandb logging
-wandb_log = False # disabled by default
-wandb_project = 'owt'
+wandb_log = True # disabled by default
+wandb_project = 'MX_nanoGPT_pretrain'
 wandb_run_name = 'gpt2' # 'run' + str(time.time())
 
 # data
@@ -255,7 +255,7 @@ def estimate_loss():
     for split in ['train', 'val']:
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
-            x, y = get_batch(split)
+            # x, y = get_batch(split)
 
             if split == 'train':
                 X, Y = next(train_iterator)
@@ -271,6 +271,7 @@ def estimate_loss():
                 Y = Y.to(device)
                 doc_ids = doc_ids.to(device)
             else:
+                
                 X = tok_ids
 
             with ctx:
@@ -318,7 +319,6 @@ local_iter_num = 0 # number of iterations in the lifetime of this process
 raw_model = model.module if ddp else model # unwrap DDP container if needed
 running_mfu = -1.0
 while True:
-
     # determine and set the learning rate for this iteration
     lr = get_lr(iter_num) if decay_lr else learning_rate
     for param_group in optimizer.param_groups:
@@ -356,7 +356,6 @@ while True:
     # and using the GradScaler if data type is float16
     # for batch_idx, sample in enumerate(train_loader):
     for micro_step in range(gradient_accumulation_steps):
-
         if ddp:
             # in DDP training we only need to sync gradients at the last micro step.
             # the official way to do this is with model.no_sync() context manager, but
@@ -366,6 +365,7 @@ while True:
         with ctx:
             logits, loss = model(X, Y)
             loss = loss / gradient_accumulation_steps # scale the loss to account for gradient accumulation
+        
         # immediately async prefetch next batch while model is doing the forward pass on the GPU
         # X, Y = get_batch('train')
         sample = next(train_iterator)
@@ -381,8 +381,7 @@ while True:
         else:
             X = tok_ids
      
-        optimizer.zero_grad()
-
+        # optimizer.zero_grad()
         # backward pass, with gradient scaling if training in fp16
         loss.backward()
         # scaler.scale(loss).backward()
