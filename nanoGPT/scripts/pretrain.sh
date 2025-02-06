@@ -18,5 +18,5 @@ module load cuda/12.4.1-fasrc01
 export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-linux/include
 module load gcc/12.2.0-fasrc01s
 
-
-python train.py
+# Training on single node
+torchrun --standalone --nproc_per_node=4 train.py
