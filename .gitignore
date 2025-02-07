@@ -1,6 +1,8 @@
 *.txt
 log
 wandb
+out
+out-shakespeare-char
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

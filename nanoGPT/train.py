@@ -38,7 +38,6 @@ from tmrc.tmrc_core.training import data, train
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
 # I/O
-out_dir = 'out'
 eval_interval = 1000
 log_interval = 10
 eval_iters = 200
@@ -113,6 +112,7 @@ train_iterator, val_iterator = iter(train_loader), iter(val_loader)
 tokens_per_iter = gradient_accumulation_steps * ddp_world_size * dataset_config.training.batch_size * block_size
 print(f"tokens per iteration will be: {tokens_per_iter:,}")
 
+out_dir = 'out_' # + dataset_config.model.mx_format
 if master_process:
     os.makedirs(out_dir, exist_ok=True)
 torch.manual_seed(1337 + seed_offset)
@@ -161,11 +161,10 @@ model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=data
                   bias=bias, vocab_size=None, dropout=dropout) # start with model_args from command line
 
 # MXFP8_e5m2 matmuls with bfloat16 vector ops, forward pass only
-
-
 mx_specs = {
-        'w_elem_format': 'fp6_e3m2',
-        'a_elem_format': 'fp6_e3m2',
+        'scale_bits': 8,
+        'w_elem_format': dataset_config.model.w_mx_format,
+        'a_elem_format': dataset_config.model.a_mx_format,
         'block_size': 32,
         'bfloat': 16,
         'custom_cuda': True,
@@ -251,11 +250,10 @@ def estimate_loss():
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
             # x, y = get_batch(split)
-
             if split == 'train':
-                X, Y = next(train_iterator)
+                sample = next(train_iterator)
             else:
-                X, Y = next(val_iterator)
+                sample = next(val_iterator)
 
             tok_ids, doc_ids = sample.get("token_ids").long(), sample.get("document_ids").long()
             Y = torch.roll(tok_ids, shifts=-1, dims=1)
@@ -270,10 +268,12 @@ def estimate_loss():
 
             with ctx:
                 logits, loss = model(X, Y)
-            
+                
             losses[k] = loss.item()
+
         out[split] = losses.mean()
     model.train()
+    
     return out
 
 # learning rate decay scheduler (cosine with warmup)
