@@ -38,7 +38,7 @@ from tmrc.tmrc_core.training import data, train
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
 # I/O
-eval_interval = 1000
+eval_interval = 500
 log_interval = 10
 eval_iters = 200
 eval_only = False # if True, script exits right after the first eval
@@ -51,15 +51,19 @@ gradient_accumulation_steps = 5 * 8 # used to simulate larger batch sizes
 block_size = 1024
 
 # model
-n_layer = 12
-n_head = 12
-n_embd = 768
+# n_layer = 12
+# n_head = 12
+# n_embd = 768
 dropout = 0.0 # for pretraining 0 is good, for finetuning try 0.1+
-bias = False # do we use bias inside LayerNorm and Linear layers?
+
+n_layer = 36
+n_head = 20
+n_embd = 1280
+dropout = 0.0 # for pretraining 0 is good, for finetuning try 0.1+
+bias = False
 # adamw optimizer
-learning_rate = 6e-4 # max learning rate
+
 max_iters = 600000 # total number of training iterations
-weight_decay = 1e-1
 beta1 = 0.9
 beta2 = 0.95
 grad_clip = 1.0 # clip gradients at this value, or disable if == 0.0
@@ -112,7 +116,9 @@ train_iterator, val_iterator = iter(train_loader), iter(val_loader)
 tokens_per_iter = gradient_accumulation_steps * ddp_world_size * dataset_config.training.batch_size * block_size
 print(f"tokens per iteration will be: {tokens_per_iter:,}")
 
-out_dir = 'out_' # + dataset_config.model.mx_format
+out_dir = 'out_' + dataset_config.model.w_mx_format + '_' + dataset_config.model.a_mx_format
+print('w_mx_format', dataset_config.model.w_mx_format)
+print('a_mx_format', dataset_config.model.a_mx_format)
 if master_process:
     os.makedirs(out_dir, exist_ok=True)
 torch.manual_seed(1337 + seed_offset)
@@ -226,7 +232,7 @@ model.to(device)
 # scaler = torch.cuda.amp.GradScaler(enabled=(dtype == 'float16'))
 
 # optimizer
-optimizer = model.configure_optimizers(weight_decay, learning_rate, (beta1, beta2), device_type)
+optimizer = model.configure_optimizers(dataset_config.optimizer.weight_decay, dataset_config.optimizer.lr, (beta1, beta2), device_type)
 if init_from == 'resume':
     optimizer.load_state_dict(checkpoint['optimizer'])
 checkpoint = None # free up memory
@@ -280,7 +286,7 @@ def estimate_loss():
 def get_lr(it):
     # 1) linear warmup for warmup_iters steps
     if it < warmup_iters:
-        return learning_rate * (it + 1) / (warmup_iters + 1)
+        return dataset_config.optimizer.lr * (it + 1) / (warmup_iters + 1)
     # 2) if it > lr_decay_iters, return min learning rate
     if it > lr_decay_iters:
         return min_lr
@@ -288,7 +294,7 @@ def get_lr(it):
     decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
     assert 0 <= decay_ratio <= 1
     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
-    return min_lr + coeff * (learning_rate - min_lr)
+    return min_lr + coeff * (dataset_config.optimizer.lr - min_lr)
 
 # logging
 if dataset_config.wandb_log and master_process:
@@ -314,7 +320,7 @@ raw_model = model.module if ddp else model # unwrap DDP container if needed
 running_mfu = -1.0
 while True:
     # determine and set the learning rate for this iteration
-    lr = get_lr(iter_num) if decay_lr else learning_rate
+    lr = get_lr(iter_num) if decay_lr else dataset_config.optimizer.lr
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
