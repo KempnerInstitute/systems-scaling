@@ -51,29 +51,32 @@ gradient_accumulation_steps = 5 * 8 # used to simulate larger batch sizes
 block_size = 1024
 
 # model
-# n_layer = 12
-# n_head = 12
-# n_embd = 768
-dropout = 0.0 # for pretraining 0 is good, for finetuning try 0.1+
+## normal
+n_layer = 12
+n_head = 12
+n_embd = 768
+## large
+# n_layer = 36
+# n_head = 20
+# n_embd = 1280
 
-n_layer = 36
-n_head = 20
-n_embd = 1280
 dropout = 0.0 # for pretraining 0 is good, for finetuning try 0.1+
 bias = False
-# adamw optimizer
 
+# adamw optimizer
 max_iters = 600000 # total number of training iterations
 beta1 = 0.9
 beta2 = 0.95
 grad_clip = 1.0 # clip gradients at this value, or disable if == 0.0
+
 # learning rate decay settings
 decay_lr = True # whether to decay the learning rate
 warmup_iters = 2000 # how many steps to warm up for
 lr_decay_iters = 600000 # should be ~= max_iters per Chinchilla
-min_lr = 6e-5 # minimum learning rate, should be ~= learning_rate/10 per Chinchilla
+
 # DDP settings
 backend = 'nccl' # 'nccl', 'gloo', etc.
+
 # system
 device = 'cuda' # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16' # 'float32', 'bfloat16', or 'float16', the latter will auto implement a GradScaler
@@ -289,12 +292,12 @@ def get_lr(it):
         return dataset_config.optimizer.lr * (it + 1) / (warmup_iters + 1)
     # 2) if it > lr_decay_iters, return min learning rate
     if it > lr_decay_iters:
-        return min_lr
+        return dataset_config.optimizer.min_lr
     # 3) in between, use cosine decay down to min learning rate
     decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
     assert 0 <= decay_ratio <= 1
     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
-    return min_lr + coeff * (dataset_config.optimizer.lr - min_lr)
+    return dataset_config.optimizer.min_lr + coeff * (dataset_config.optimizer.lr - dataset_config.optimizer.min_lr)
 
 # logging
 if dataset_config.wandb_log and master_process:
