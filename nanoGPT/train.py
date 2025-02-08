@@ -64,7 +64,6 @@ dropout = 0.0 # for pretraining 0 is good, for finetuning try 0.1+
 bias = False
 
 # adamw optimizer
-max_iters = 600000 # total number of training iterations
 beta1 = 0.9
 beta2 = 0.95
 grad_clip = 1.0 # clip gradients at this value, or disable if == 0.0
@@ -72,7 +71,6 @@ grad_clip = 1.0 # clip gradients at this value, or disable if == 0.0
 # learning rate decay settings
 decay_lr = True # whether to decay the learning rate
 warmup_iters = 2000 # how many steps to warm up for
-lr_decay_iters = 600000 # should be ~= max_iters per Chinchilla
 
 # DDP settings
 backend = 'nccl' # 'nccl', 'gloo', etc.
@@ -291,10 +289,10 @@ def get_lr(it):
     if it < warmup_iters:
         return dataset_config.optimizer.lr * (it + 1) / (warmup_iters + 1)
     # 2) if it > lr_decay_iters, return min learning rate
-    if it > lr_decay_iters:
+    if it > dataset_config.lr_decay_iters:
         return dataset_config.optimizer.min_lr
     # 3) in between, use cosine decay down to min learning rate
-    decay_ratio = (it - warmup_iters) / (lr_decay_iters - warmup_iters)
+    decay_ratio = (it - warmup_iters) / (dataset_config.lr_decay_iters - warmup_iters)
     assert 0 <= decay_ratio <= 1
     coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
     return dataset_config.optimizer.min_lr + coeff * (dataset_config.optimizer.lr - dataset_config.optimizer.min_lr)
@@ -415,7 +413,7 @@ while True:
     local_iter_num += 1
 
     # termination conditions
-    if iter_num > max_iters:
+    if iter_num > dataset_config.max_iters:
         break
 
 if ddp:
