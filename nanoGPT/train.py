@@ -179,6 +179,7 @@ mx_specs = {
         'quantize_backprop': True,
     }
 mx_specs = finalize_mx_specs(mx_specs)
+
 mx_mapping.inject_pyt_ops(mx_specs)
 
 if init_from == 'scratch':
@@ -300,7 +301,7 @@ def get_lr(it):
 # logging
 if dataset_config.wandb_log and master_process:
     import wandb
-    wandb.init(project=dataset_config.wandb_project, name=dataset_config.wandb_run_name, config=config)
+    wandb.init(project=dataset_config.wandb_project, entity=dataset_config.wandb_entity, name=dataset_config.wandb_run_name, config=config)
 
 # training loop
 # X, Y = get_batch('train') # fetch the very first batch
