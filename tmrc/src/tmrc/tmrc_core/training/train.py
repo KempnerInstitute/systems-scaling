@@ -199,7 +199,7 @@ def get_config_path():
     parser = argparse.ArgumentParser(description='Training script with customizable config path')
     parser.add_argument('--config-path', 
                        type=str,
-                       default="../tmrc/configs/training",
+                       default="../tmrc/training",
                        help='Path to the config directory')
     parser.add_argument('--config-name',
                        type=str,
