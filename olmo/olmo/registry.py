@@ -1,7 +1,7 @@
 import glob
 
 data_path = "/n/holyscratch01/kempner_fellows/Lab/data"
-data_path_2 = "/n/vast-scratch/kempner_fellows/data"
+data_path_2 = "/n/netscratch/kempner_fellows/data"
 # Tokenized data
 DATA_DICT = {
     "fineweb-1T": f"{data_path_2}/fineweb-recent-1T-merged",

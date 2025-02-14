@@ -38,7 +38,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/holyscratch01/sham_lab/color-scale/ckpts"
+export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

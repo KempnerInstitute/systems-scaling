@@ -25,7 +25,7 @@ NODES = int(os.environ.get("SLURM_ARRAY_TASK_COUNT", 1))
 RANK = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
 
 # DESTINATION = "/n/holyscratch01/kempner_fellows/Lab/data"
-DESTINATION = "/n/vast-scratch/kempner_fellows/data/smollm-corpus"
+DESTINATION = "/n/netscratch/kempner_fellows/data/smollm-corpus"
 
 print(f"Running with {N_TASKS_PER_NODE} tasks per node, {NODES} nodes, and rank {RANK}")
 
@@ -61,7 +61,7 @@ class StackExpander(PipelineStep):
 dist_executor = LocalPipelineExecutor(
     pipeline=[
         ParquetReader(
-            data_folder=f"/n/vast-scratch/kempner_fellows/data/python-edu-parquet",
+            data_folder=f"/n/netscratch/kempner_fellows/data/python-edu-parquet",
             glob_pattern="*.parquet",
             text_key="text",
             id_key="text",
