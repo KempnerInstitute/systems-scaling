@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=color-filter
-#SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/loss-to-loss-olmo/logs/%A_%a.log
+#SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/olmo/logs/%A_%a.log
 #SBATCH --nodes=1             
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4    
