@@ -30,8 +30,7 @@ import hydra
 
 from model import GPTConfig, GPT
 
-from mx import finalize_mx_specs
-from mx import mx_mapping
+from mx import finalize_mx_specs, mx_mapping
 
 from tmrc.tmrc_core.training import data, train
 
@@ -168,19 +167,18 @@ model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=data
                   bias=bias, vocab_size=None, dropout=dropout) # start with model_args from command line
 
 # MXFP8_e5m2 matmuls with bfloat16 vector ops, forward pass only
-mx_specs = {
-        'scale_bits': 8,
-        'w_elem_format': dataset_config.model.w_mx_format,
-        'a_elem_format': dataset_config.model.a_mx_format,
-        'block_size': 32,
-        'bfloat': 16,
-        'custom_cuda': True,
-        # For quantization-aware finetuning, do backward pass in FP32
-        'quantize_backprop': True,
-    }
-mx_specs = finalize_mx_specs(mx_specs)
-
-mx_mapping.inject_pyt_ops(mx_specs)
+# mx_specs = {
+#         'scale_bits': 8,
+#         'w_elem_format': dataset_config.model.w_mx_format,
+#         'a_elem_format': dataset_config.model.a_mx_format,
+#         'block_size': 32,
+#         'bfloat': 16,
+#         'custom_cuda': True,
+#         # For quantization-aware finetuning, do backward pass in FP32
+#         'quantize_backprop': True,
+#     }
+# mx_specs = finalize_mx_specs(mx_specs)
+# mx_mapping.inject_pyt_ops(mx_specs)
 
 if init_from == 'scratch':
     # init a new model from scratch
