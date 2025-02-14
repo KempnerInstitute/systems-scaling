@@ -18,9 +18,9 @@
 # sleep $((RANDOM % 120))
 
 # Custom environment
-source ~/.bashrc
-conda deactivate
-conda activate rl_ox
+# source ~/.bashrc
+# conda deactivate
+# conda activate rl_ox
 
 export HF_DATASETS_OFFLINE=1 # Only use cached data
 
