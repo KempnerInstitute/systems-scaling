@@ -37,8 +37,8 @@ model:
   dropout_p: 0.0
   context_length: 1024
   autocast_precision: bfloat16
-  w_mx_format: 'full' # 'fp8_e5m2', 'fp6_e3m2', 'fp4_e2m1', 'int8'
-  a_mx_format: 'full'
+  w_mx_format: 'fp4_e2m1' # 'fp8_e5m2', 'fp6_e3m2', 'fp4_e2m1', 'int8'
+  a_mx_format: 'fp4_e2m1'
   flash: False
   flex: True
   mlp_scale_factor: 4
