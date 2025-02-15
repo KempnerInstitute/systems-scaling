@@ -15,8 +15,8 @@ def create_dataloaders(config):
      - [TODO] implement proper validation set
      - [TODO] more data checks to validate batch sizes, document ids, etc. are consistent across all batches
     """
-    train_dataset = get_dataset(config.datasets.path, context_length = config.model.context_length, split='train')
-    val_dataset = get_dataset(config.datasets.path, context_length = config.model.context_length, split='val')
+    train_dataset = get_dataset(config.datasets.paths, context_length = config.model.context_length, split='train')
+    val_dataset = get_dataset(config.datasets.paths, context_length = config.model.context_length, split='val')
 
     # val_size = len(full_dataset) // 10  # 10% for validation
     # train_size = len(full_dataset) - val_size

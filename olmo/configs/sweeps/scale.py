@@ -61,7 +61,7 @@ model_sizes = [
 
 
 model_defaults = {
-    "max_sequence_length": 512,
+    "context_length": 512,
     "mlp_ratio": 4,
     "rope": True,
     "attention_layer_norm": True,

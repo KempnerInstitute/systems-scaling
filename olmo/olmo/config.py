@@ -353,7 +353,7 @@ class ModelConfig(BaseConfig):
     Toggle affine transform for the QK norms.
     """
 
-    max_sequence_length: int = 1024
+    context_length: int = 1024
     """
     The maximum input sequence length supported by the model.
     """
@@ -547,7 +547,9 @@ class PaddingDirection(StrEnum):
 
 @dataclass
 class DataConfig(BaseConfig):
+    name: Optional[Any] = None
     paths: Optional[Any] = None
+    tokenizer_used: Optional[Any] = None
     weighted_paths: Optional[Dict[str, float]] = None
     datasets: Optional[Dict[str, Any]] = None
     label_mask_paths: Optional[List[str]] = None
@@ -587,6 +589,14 @@ class DataConfig(BaseConfig):
 class EvaluatorType(StrEnum):
     downstream = "downstream"
     lm = "lm"
+
+@dataclass
+class TrainingConfig(BaseConfig):
+
+    batch_size: int = 512
+    """
+    The effective global batch size.
+    """
 
 
 @dataclass
@@ -865,7 +875,7 @@ class TrainConfig(BaseConfig):
     Learning rate scheduler configuration.
     """
 
-    data: DataConfig = field(default_factory=DataConfig)
+    datasets: DataConfig = field(default_factory=DataConfig)
     """
     Training data configuration.
     """
@@ -1013,10 +1023,7 @@ class TrainConfig(BaseConfig):
     2 trillion tokens.
     """
 
-    global_train_batch_size: int = 512
-    """
-    The effective global batch size.
-    """
+    training: TrainingConfig = field(default_factory=TrainingConfig)
 
     device_train_batch_size: Optional[int] = None  # calculated automatically
     """

@@ -49,7 +49,7 @@ def model_config() -> ModelConfig:
         d_model=128,
         n_heads=2,
         n_layers=3,
-        max_sequence_length=512,
+        context_length=512,
         init_fn=InitFnType.normal,
     )
 

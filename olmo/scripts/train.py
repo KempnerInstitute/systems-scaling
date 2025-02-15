@@ -163,7 +163,7 @@ def main(cfg: TrainConfig) -> None:
 
     # Fill some configuration options.
     cfg.model.precision = cfg.precision
-    cfg.device_train_batch_size = cfg.global_train_batch_size // get_world_size()
+    cfg.device_train_batch_size = cfg.training.batch_size // get_world_size()
     assert cfg.device_train_batch_size is not None  # for mypy
     cfg.device_train_grad_accum = cfg.device_train_batch_size // cfg.device_train_microbatch_size
     if cfg.optimizer.no_decay_norm_and_bias is not None:
@@ -178,7 +178,7 @@ def main(cfg: TrainConfig) -> None:
 
     # Display and save configuration.
     if get_global_rank() == 0:
-        if cfg.data.paths is not None and len(cfg.data.paths) < 50:
+        if cfg.datasets.paths is not None and len(cfg.datasets.paths) < 50:
             log.info("Configuration:")
             log.info(cfg)
         if not cfg.dry_run and (cfg.load_path is None or Path(cfg.load_path).parent != Path(cfg.save_folder)):
@@ -214,22 +214,22 @@ def main(cfg: TrainConfig) -> None:
     seed_all(cfg.seed)
 
     # Construct data loader
-    if cfg.data.index_path is not None:
-        log.info(f"Using fixed index path: {cfg.data.index_path}")
-        cfg.data.index_path = INDEX_DICT.get(cfg.data.index_path, cfg.data.index_path)
-        train_loader = build_train_dataloader_fixed_index(cfg)
-    elif cfg.sft_dataset is not None:
-        dataset_labels = cfg.sft_dataset.label.split(",")
-        data_cfgs = []
-        for label in dataset_labels:
-            data_cfg = copy.deepcopy(cfg.sft_dataset)
-            data_cfg.label = label
-            data_cfgs.append(data_cfg)
-        train_loader = build_sft_dataloader(cfg, data_cfgs)
-    else:
-        train_loader = build_train_dataloader(cfg)
+    # if cfg.data.index_path is not None:
+    #     log.info(f"Using fixed index path: {cfg.data.index_path}")
+    #     cfg.data.index_path = INDEX_DICT.get(cfg.data.index_path, cfg.data.index_path)
+    #     train_loader = build_train_dataloader_fixed_index(cfg)
+    # elif cfg.sft_dataset is not None:
+    #     dataset_labels = cfg.sft_dataset.label.split(",")
+    #     data_cfgs = []
+    #     for label in dataset_labels:
+    #         data_cfg = copy.deepcopy(cfg.sft_dataset)
+    #         data_cfg.label = label
+    #         data_cfgs.append(data_cfg)
+    #     train_loader = build_sft_dataloader(cfg, data_cfgs)
+    # else:
+    #     train_loader = build_train_dataloader(cfg)
 
-    train_loader, val_loader = data.create_dataloaders(dataset_config)
+    train_loader, val_loader = data.create_dataloaders(cfg)
     log.info(f"Built train dataloader for dataset of size {train_loader.dataset.total_size}")
 
     # Construct evaluators.
@@ -349,4 +349,5 @@ if __name__ == "__main__":
         raise OLMoCliError(f"Usage: {sys.argv[0]} [CONFIG_PATH] [OPTIONS]")
 
     cfg = TrainConfig.load(yaml_path, [clean_opt(s) for s in args_list])
+    print('----------- yaml_path', yaml_path)
     main(cfg)

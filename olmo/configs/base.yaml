@@ -3,7 +3,8 @@ seed: 0
 dry_run: false
 
 max_duration: 24000 # ~12B tokens for batches of 256 x 2048
-global_train_batch_size: 256 
+training: 
+  batch_size: 256 # global_train_batch_size
 device_train_microbatch_size: 32 # For H100 w/color, need smaller for RHO methods
 
 # TODO: add your own wandb information
@@ -21,7 +22,7 @@ model:
   # mlp_hidden_size: 4096
   n_heads: 16
   n_layers: 12
-  max_sequence_length: 2048
+  context_length: 2048
   rope: true
   attention_layer_norm: true
   attention_layer_norm_with_affine: true 
@@ -74,9 +75,16 @@ optimizer:
 activation_checkpointing: false
 softmax_auxiliary_loss: true
 
-data:
+# datasets:
+#   name: algebraic-stack
+#   path: 
+#   tokenizer_used: t5-base
+
+datasets:
+  name: algebraic-stack
   # paths: ${path.glob:/n/holyscratch01/kempner_fellows/Lab/data/c4-tokenized-llama/*/*.npy}
-  paths: c4 
+  paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv" # c4 
+  tokenizer_used: t5-base
   memmap_dtype: uint16
   pad_direction: right
   num_workers: 16 

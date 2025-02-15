@@ -77,11 +77,6 @@ def run(cli_args):
     else:
         overrides = {}
 
-
-    # to delete 
-    slurm_cpus_per_task = 24
-    slurm_job_id = 0
-    slurm_task_id = 0
     launch_args = [
         "srun",
         f"--cpus-per-task={slurm_cpus_per_task}",

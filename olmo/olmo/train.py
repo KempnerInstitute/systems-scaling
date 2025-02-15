@@ -205,13 +205,13 @@ class Trainer:
 
     @property
     def tokens_per_batch(self) -> int:
-        return self.cfg.global_train_batch_size * self.cfg.model.max_sequence_length
+        return self.cfg.training.batch_size * self.cfg.model.max_sequence_length
 
     @property
     def batches_per_epoch(self) -> int:
         if self.dataset.total_size == np.inf:
             return np.inf
-        return self.dataset.total_size // self.cfg.global_train_batch_size
+        return self.dataset.total_size // self.cfg.training.batch_size
 
     @property
     def max_epochs(self) -> int:
@@ -324,13 +324,13 @@ class Trainer:
             "global_train_examples_seen_this_epoch",
             state_dict.get(  # for backwards compatibility
                 "global_train_examples_seen",
-                state_dict.get("global_data_step", self.global_step) * self.cfg.global_train_batch_size,
+                state_dict.get("global_data_step", self.global_step) * self.cfg.training.batch_size,
             ),
         )
         self.global_train_tokens_seen = state_dict.get(
             "global_train_tokens_seen",
             state_dict.get("global_data_step", self.global_step)  # for backwards compatibility
-            * self.cfg.global_train_batch_size
+            * self.cfg.training.batch_size
             * self.cfg.model.max_sequence_length,
         )
 
@@ -349,7 +349,7 @@ class Trainer:
             # Technically we don't "see" these batches that we fast-forward through, but we use
             # this variable to update the position of the dataset so we need to include them here.
             self.global_train_examples_seen_this_epoch += (
-                self.cfg.fast_forward_batches * self.cfg.global_train_batch_size
+                self.cfg.fast_forward_batches * self.cfg.training.batch_size
             )
             # NOTE: on the other hand we don't add anything to 'self.global_train_tokens_seen' here because
             # that variable is meant to track the actual number of tokens trained on.

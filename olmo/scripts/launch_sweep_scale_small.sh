@@ -4,13 +4,11 @@
 #SBATCH --nodes=1             
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4    
-#SBATCH --cpus-per-task=24
+#SBATCH --cpus-per-task=16
 #SBATCH --time=36:00:00
 #SBATCH --mem=100GB		
 #SBATCH --account=kempner_grads
-#SBATCH --partition=kempner_h100
-#SBATCH --constraint=h100
-#SBATCH --array=1-6
+#SBATCH --partition=kempner
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
 #SBATCH --exclude=holygpu8a15401
@@ -21,6 +19,7 @@
 # source ~/.bashrc
 # conda deactivate
 # conda activate rl_ox
+
 
 export HF_DATASETS_OFFLINE=1 # Only use cached data
 

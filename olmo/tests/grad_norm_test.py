@@ -84,7 +84,7 @@ def _init_torch_optim(cfg, model):
 
 def _patch_config(cfg, max_norm):
     # patch config
-    cfg.device_train_batch_size = cfg.global_train_batch_size // get_world_size()
+    cfg.device_train_batch_size = cfg.training.batch_size // get_world_size()
     cfg.data.paths = [
         "test_fixtures/c4-sample.01.json.gz",
         "test_fixtures/c4-sample.02.json.gz",
