@@ -205,6 +205,8 @@ class LayerNorm(LayerNormBase):
         super().__init__(config, size=size, elementwise_affine=elementwise_affine, eps=eps)
         self.low_precision = low_precision
 
+        self.ln = nn.LayerNorm(self.normalized_shape, eps=self.eps) # weight=self.weight, bias=self.bias
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.low_precision:
             module_device = x.device
@@ -218,7 +220,7 @@ class LayerNorm(LayerNormBase):
                     downcast_x, self.normalized_shape, weight=downcast_weight, bias=downcast_bias, eps=self.eps
                 )
         else:
-            return F.layer_norm(x, self.normalized_shape, weight=self.weight, bias=self.bias, eps=self.eps)
+            return self.ln(x)
 
 
 class RMSLayerNorm(LayerNormBase):
@@ -445,7 +447,7 @@ class OLMoBlock(nn.Module):
 
         # Attention output projection.
         self.attn_out = nn.Linear(
-            config.d_model, config.d_model, bias=config.include_bias, device=config.init_device
+            config.d_model, config.d_model, bias=config.include_bias, # device=config.init_device
         )
 
         # Feed-forward output projection.
@@ -453,7 +455,7 @@ class OLMoBlock(nn.Module):
             int(self.act.output_multiplier * self.hidden_size),
             config.d_model,
             bias=config.include_bias,
-            device=config.init_device,
+            # device=config.init_device,
         )
         self.ff_out._is_residual = True  # type: ignore
 
@@ -652,11 +654,11 @@ class OLMoSequentialBlock(OLMoBlock):
             config.effective_n_kv_heads * head_dim,
         )
         self.att_proj = nn.Linear(
-            config.d_model, sum(self.fused_dims), bias=config.include_bias, device=config.init_device
+            config.d_model, sum(self.fused_dims), bias=config.include_bias, # device=config.init_device
         )
         # Feed-forward input projection.
         self.ff_proj = nn.Linear(
-            config.d_model, self.hidden_size, bias=config.include_bias, device=config.init_device
+            config.d_model, self.hidden_size, bias=config.include_bias, # device=config.init_device
         )
 
     def reset_parameters(self):
@@ -751,18 +753,18 @@ class OLMoLlamaBlock(OLMoBlock):
             k_proj_out_dim = config.d_model
             v_proj_out_dim = config.d_model
         self.q_proj = nn.Linear(
-            config.d_model, q_proj_out_dim, bias=config.include_bias, device=config.init_device
+            config.d_model, q_proj_out_dim, bias=config.include_bias, # device=config.init_device
         )
         self.k_proj = nn.Linear(
-            config.d_model, k_proj_out_dim, bias=config.include_bias, device=config.init_device
+            config.d_model, k_proj_out_dim, bias=config.include_bias, # device=config.init_device
         )
         self.v_proj = nn.Linear(
-            config.d_model, v_proj_out_dim, bias=config.include_bias, device=config.init_device
+            config.d_model, v_proj_out_dim, bias=config.include_bias, # device=config.init_device
         )
 
         # Feed-forward input projection.
         self.ff_proj = nn.Linear(
-            config.d_model, self.hidden_size, bias=config.include_bias, device=config.init_device
+            config.d_model, self.hidden_size, bias=config.include_bias, # device=config.init_device
         )
 
     def reset_parameters(self):
@@ -988,7 +990,7 @@ class OLMo(nn.Module):
                         config.d_model,
                         config.embedding_size or config.vocab_size,
                         bias=config.include_bias,
-                        device=config.init_device,
+                        # device=config.init_device,
                     )
                 }
             )
