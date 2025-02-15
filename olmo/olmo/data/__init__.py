@@ -57,7 +57,7 @@ def build_memmap_dataset(
         paths = data_config.paths
         if isinstance(paths, str):
             path = get_path(paths)
-            paths = list(path.glob("*.npy")) + list(path.glob("*.ds"))
+            paths = list(path.glob("*.bin")) + list(path.glob("*.npy")) + list(path.glob("*.ds"))
             if len(paths) == 0:
                 paths = list(path.glob("*/*.npy")) + list(path.glob("*/*.ds"))
             if len(paths) == 0:
@@ -73,7 +73,7 @@ def build_memmap_dataset(
             if isinstance(label_paths, str):
                 path = get_path(label_paths)
                 print(f"Loading {label} from {path}")
-                label_paths = list(Path(path).glob("*.npy")) + list(Path(path).glob("*.ds"))
+                label_paths = list(path.glob("*.bin")) + list(Path(path).glob("*.npy")) + list(Path(path).glob("*.ds"))
                 if len(label_paths) == 0:
                     label_paths = list(Path(path).glob("*/*.npy")) + list(Path(path).glob("*/*.ds"))
                 if len(label_paths) == 0:
@@ -96,7 +96,7 @@ def build_memmap_dataset(
     # else:
     return MemMapDataset(
         *paths,
-        chunk_size=train_config.model.max_sequence_length,
+        chunk_size=train_config.model.context_length,
         memmap_dtype=data_config.effective_memmap_dtype,
         metadata=metadata,
         include_instance_metadata=include_instance_metadata,
@@ -173,7 +173,7 @@ def build_train_iterable_dataset(
     seed = data_config.seed if data_config.seed is not None else train_config.seed
     return IterableDataset(
         dataset,  # type: ignore
-        train_config.global_train_batch_size,
+        train_config.training.batch_size,
         seed=seed + (train_config.epoch or 0),
         shuffle=True,
         drop_last=data_config.drop_last,
@@ -183,11 +183,11 @@ def build_train_iterable_dataset(
 
 
 def build_train_dataloader(train_config: TrainConfig, world_size: Optional[int] = None) -> DataLoader:
-    if train_config.data.weighted_paths is None:
-        dataset = build_train_iterable_dataset(train_config, train_config.data, world_size)
+    if train_config.datasets.weighted_paths is None:
+        dataset = build_train_iterable_dataset(train_config, train_config.datasets, world_size)
     else:
-        paths = list(train_config.data.weighted_paths.keys())
-        weights = list(train_config.data.weighted_paths.values())
+        paths = list(train_config.datasets.weighted_paths.keys())
+        weights = list(train_config.datasets.weighted_paths.values())
         print(f"Using mixture dataset with weights {weights} for paths {paths}")
         assert len(paths) == len(weights)
         assert sum(weights) == 1.0
@@ -201,58 +201,58 @@ def build_train_dataloader(train_config: TrainConfig, world_size: Optional[int] 
     if train_config.score_hf:
         if "new" in train_config.load_path:
             collator = DataCollator(
-                pad_direction=train_config.data.pad_direction, pad_token_id=train_config.model.pad_token_id
+                pad_direction=train_config.datasets.pad_direction, pad_token_id=train_config.model.pad_token_id
             )
         else:
             old_tokenizer = load_tokenizer(train_config.tokenizer.identifier)
             new_tokenizer = load_tokenizer(train_config.load_path)
             collator = DataCollator(
-                pad_direction=train_config.data.pad_direction,
+                pad_direction=train_config.datasets.pad_direction,
                 pad_token_id=train_config.model.pad_token_id,
                 old_tokenizer=old_tokenizer,
                 new_tokenizer=new_tokenizer,
             )
     else:
         collator = DataCollator(
-            pad_direction=train_config.data.pad_direction, pad_token_id=train_config.model.pad_token_id
+            pad_direction=train_config.datasets.pad_direction, pad_token_id=train_config.model.pad_token_id
         )
     return DataLoader(
         dataset,
         batch_size=train_config.device_train_batch_size,
-        drop_last=train_config.data.drop_last,
+        drop_last=train_config.datasets.drop_last,
         collate_fn=collator,
-        num_workers=train_config.data.num_workers,
-        pin_memory=train_config.data.pin_memory,
-        prefetch_factor=None if train_config.data.num_workers == 0 else train_config.data.prefetch_factor,
-        persistent_workers=False if train_config.data.num_workers == 0 else train_config.data.persistent_workers,
-        timeout=train_config.data.timeout,
+        num_workers=train_config.datasets.num_workers,
+        pin_memory=train_config.datasets.pin_memory,
+        prefetch_factor=None if train_config.datasets.num_workers == 0 else train_config.datasets.prefetch_factor,
+        persistent_workers=False if train_config.datasets.num_workers == 0 else train_config.datasets.persistent_workers,
+        timeout=train_config.datasets.timeout,
     )
 
 
 def build_train_dataloader_fixed_index(train_config: TrainConfig) -> DataLoader:
     assert train_config.device_train_batch_size is not None
     collator = DataCollator(
-        pad_direction=train_config.data.pad_direction, pad_token_id=train_config.model.pad_token_id
+        pad_direction=train_config.datasets.pad_direction, pad_token_id=train_config.model.pad_token_id
     )
-    dataset = build_memmap_dataset(train_config, train_config.data, include_instance_metadata=False)
+    dataset = build_memmap_dataset(train_config, train_config.datasets, include_instance_metadata=False)
     barrier()
     return DataLoader(
         IterableDatasetFixedIndex(
             dataset,  # type: ignore
-            train_config.global_train_batch_size,
-            input_index_path=train_config.data.index_path,
+            train_config.training.batch_size,
+            input_index_path=train_config.datasets.index_path,
             seed=train_config.seed + (train_config.epoch or 0),
             shuffle=True,
-            drop_last=train_config.data.drop_last,
+            drop_last=train_config.datasets.drop_last,
         ),
         batch_size=train_config.device_train_batch_size,
-        drop_last=train_config.data.drop_last,
+        drop_last=train_config.datasets.drop_last,
         collate_fn=collator,
-        num_workers=train_config.data.num_workers,
-        pin_memory=train_config.data.pin_memory,
-        prefetch_factor=None if train_config.data.num_workers == 0 else train_config.data.prefetch_factor,
-        persistent_workers=False if train_config.data.num_workers == 0 else train_config.data.persistent_workers,
-        timeout=train_config.data.timeout,
+        num_workers=train_config.datasets.num_workers,
+        pin_memory=train_config.datasets.pin_memory,
+        prefetch_factor=None if train_config.datasets.num_workers == 0 else train_config.datasets.prefetch_factor,
+        persistent_workers=False if train_config.datasets.num_workers == 0 else train_config.datasets.persistent_workers,
+        timeout=train_config.datasets.timeout,
     )
 
 
@@ -269,7 +269,7 @@ def build_sft_dataloader(
             task_class, task_kwargs = task_class
         task_kwargs["sft_use_label"] = eval_config.sft_use_label
         task_kwargs["sft"] = eval_config.sft
-        task_kwargs["model_ctx_len"] = train_config.model.max_sequence_length
+        task_kwargs["model_ctx_len"] = train_config.model.context_length
         dataset = task_class(tokenizer=tokenizer, **task_kwargs)
         datasets.append(dataset)
         assert isinstance(dataset, ICLMultiChoiceTaskDataset)  # NOTE collate only implemented for ICL
@@ -288,47 +288,47 @@ def build_sft_dataloader(
     return DataLoader(
         IterableDataset(
             sft_dataset,  # type: ignore
-            train_config.global_train_batch_size,
+            train_config.training.batch_size,
             seed=train_config.seed + (train_config.epoch or 0),
             shuffle=True,
-            drop_last=train_config.data.drop_last,
+            drop_last=train_config.datasets.drop_last,
             work_dir=work_dir,
         ),
         batch_size=train_config.device_train_batch_size,
-        drop_last=train_config.data.drop_last,
+        drop_last=train_config.datasets.drop_last,
         collate_fn=collate_fn,
-        num_workers=train_config.data.num_workers,
-        pin_memory=train_config.data.pin_memory,
-        prefetch_factor=None if train_config.data.num_workers == 0 else train_config.data.prefetch_factor,
-        persistent_workers=False if train_config.data.num_workers == 0 else train_config.data.persistent_workers,
-        timeout=train_config.data.timeout,
+        num_workers=train_config.datasets.num_workers,
+        pin_memory=train_config.datasets.pin_memory,
+        prefetch_factor=None if train_config.datasets.num_workers == 0 else train_config.datasets.prefetch_factor,
+        persistent_workers=False if train_config.datasets.num_workers == 0 else train_config.datasets.persistent_workers,
+        timeout=train_config.datasets.timeout,
     )
 
 
 def build_train_dataloader_val(train_config: TrainConfig, val=False) -> DataLoader:
     assert train_config.device_train_batch_size is not None
     collator = DataCollator(
-        pad_direction=train_config.data.pad_direction, pad_token_id=train_config.model.pad_token_id
+        pad_direction=train_config.datasets.pad_direction, pad_token_id=train_config.model.pad_token_id
     )
-    dataset = build_memmap_dataset(train_config, train_config.data, include_instance_metadata=False)
+    dataset = build_memmap_dataset(train_config, train_config.datasets, include_instance_metadata=False)
     barrier()
     return DataLoader(
         IterableDatasetTrainVal(
             dataset,  # type: ignore
-            train_config.global_train_batch_size,
-            input_index_path=train_config.data.index_path,
+            train_config.training.batch_size,
+            input_index_path=train_config.datasets.index_path,
             seed=train_config.seed + (train_config.epoch or 0),
             shuffle=True,
-            drop_last=train_config.data.drop_last,
+            drop_last=train_config.datasets.drop_last,
             val_percentage=0.01,
             val=val,
         ),
         batch_size=train_config.device_train_batch_size,
-        drop_last=train_config.data.drop_last,
+        drop_last=train_config.datasets.drop_last,
         collate_fn=collator,
-        num_workers=train_config.data.num_workers,
-        pin_memory=train_config.data.pin_memory,
-        prefetch_factor=None if train_config.data.num_workers == 0 else train_config.data.prefetch_factor,
-        persistent_workers=False if train_config.data.num_workers == 0 else train_config.data.persistent_workers,
-        timeout=train_config.data.timeout,
+        num_workers=train_config.datasets.num_workers,
+        pin_memory=train_config.datasets.pin_memory,
+        prefetch_factor=None if train_config.datasets.num_workers == 0 else train_config.datasets.prefetch_factor,
+        persistent_workers=False if train_config.datasets.num_workers == 0 else train_config.datasets.persistent_workers,
+        timeout=train_config.datasets.timeout,
     )

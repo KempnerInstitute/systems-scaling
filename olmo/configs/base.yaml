@@ -45,6 +45,11 @@ model:
   init_fn: mitchell
   weight_tying: false
 
+  # quantizations
+  # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
+  w_mx_format: 'int8'
+  a_mx_format: 'int8'
+
 # compile: null
 
 compile:
@@ -124,308 +129,313 @@ evaluators:
   ##########################
   # Perplexity evaluations #
   ##########################
-  - label: c4
+  - label: redpajama
     data:
       datasets:
-        c4_val: c4-val
+        redpajama_val: redpajama-val
       drop_last: true
-  - label: starcoder
-    data:
-      datasets:
-        starcoder_val: starcoder-val
-      drop_last: true
-  - label: proof_pile_2
-    data:
-      datasets:
-        proof_pile_2_val: proof-pile-2-val
-      drop_last: true
-  - label: fineweb_100b
-    data:
-      datasets:
-        fineweb_100b_val: fineweb-100b-val
-      drop_last: true
-  - label: fineweb_1T
-    data:
-      datasets:
-        fineweb_1T_val: fineweb-1T-val
-      drop_last: true
-  - label: fineweb_edu_100b
-    data:
-      datasets:
-        fineweb_edu_100b_val: fineweb-edu-100b-val
-      drop_last: true
-  - label: slimpajama
-    data:
-      datasets:
-        slimpajama_val: slimpajama-chunk1-val
-      drop_last: true
-  - label: smollm
-    data:
-      datasets:
-        smollm_val: smollm-corpus-val
-      drop_last: true
+#   - label: c4
+#     data:
+#       datasets:
+#         c4_val: c4-val
+#       drop_last: true
+#   - label: starcoder
+#     data:
+#       datasets:
+#         starcoder_val: starcoder-val
+#       drop_last: true
+#   - label: proof_pile_2
+#     data:
+#       datasets:
+#         proof_pile_2_val: proof-pile-2-val
+#       drop_last: true
+#   - label: fineweb_100b
+#     data:
+#       datasets:
+#         fineweb_100b_val: fineweb-100b-val
+#       drop_last: true
+#   - label: fineweb_1T
+#     data:
+#       datasets:
+#         fineweb_1T_val: fineweb-1T-val
+#       drop_last: true
+#   - label: fineweb_edu_100b
+#     data:
+#       datasets:
+#         fineweb_edu_100b_val: fineweb-edu-100b-val
+#       drop_last: true
+#   - label: slimpajama
+#     data:
+#       datasets:
+#         slimpajama_val: slimpajama-chunk1-val
+#       drop_last: true
+#   - label: smollm
+#     data:
+#       datasets:
+#         smollm_val: smollm-corpus-val
+#       drop_last: true
 
 
 
-  ##########################
-  # Train #
-  ##########################
+#   ##########################
+#   # Train #
+#   ##########################
   
-  # - label: piqa_train
-  #   type: downstream
+#   # - label: piqa_train
+#   #   type: downstream
 
-  # - label: openbook_qa_train
-  #   type: downstream
+#   # - label: openbook_qa_train
+#   #   type: downstream
 
-  # - label: hellaswag_train
-  #   type: downstream
+#   # - label: hellaswag_train
+#   #   type: downstream
 
-  # - label: winogrande_train
-  #   type: downstream
+#   # - label: winogrande_train
+#   #   type: downstream
   
-  # - label: arc_easy_train
-  #   type: downstream
+#   # - label: arc_easy_train
+#   #   type: downstream
   
-  # - label: arc_challenge_train
-  #   type: downstream
+#   # - label: arc_challenge_train
+#   #   type: downstream
   
-  # - label: boolq_train
-  #   type: downstream
+#   # - label: boolq_train
+#   #   type: downstream
 
-  # - label: sciq_train
-  #   type: downstream
+#   # - label: sciq_train
+#   #   type: downstream
 
 
-  ##########################
-  # Downstream evaluations from OLMO #
-  ##########################
+#   ##########################
+#   # Downstream evaluations from OLMO #
+#   ##########################
 
-  - label: piqa_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: piqa_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: openbook_qa_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: openbook_qa_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: hellaswag_test     
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: hellaswag_test     
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: winogrande_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: winogrande_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: arc_easy_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: arc_easy_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: arc_challenge_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: arc_challenge_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: boolq_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: boolq_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: sciq_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: sciq_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
   
- ##########################
-  # Soft Downstream evaluations from OLMO #
-  ##########################
+#  ##########################
+#   # Soft Downstream evaluations from OLMO #
+#   ##########################
 
-  - label: piqa_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: piqa_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: openbook_qa_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: openbook_qa_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: hellaswag_test     
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: hellaswag_test     
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: winogrande_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: winogrande_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: arc_easy_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: arc_easy_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: arc_challenge_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: arc_challenge_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: boolq_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: boolq_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: sciq_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: sciq_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
 
-  - label: piqa_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ctx_ce_wrapper: true
+#   - label: piqa_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ctx_ce_wrapper: true
 
-  - label: openbook_qa_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ctx_ce_wrapper: true
+#   - label: openbook_qa_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ctx_ce_wrapper: true
 
-  - label: hellaswag_test     
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ctx_ce_wrapper: true
+#   - label: hellaswag_test     
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ctx_ce_wrapper: true
 
-  # Some sort of bug?
-  # - label: winogrande_test
-  #   type: downstream
-  #   subset_num_batches: 1000 # do not subset here
-  #   ctx_ce_wrapper: true
+#   # Some sort of bug?
+#   # - label: winogrande_test
+#   #   type: downstream
+#   #   subset_num_batches: 1000 # do not subset here
+#   #   ctx_ce_wrapper: true
 
-  - label: arc_easy_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ctx_ce_wrapper: true
+#   - label: arc_easy_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ctx_ce_wrapper: true
 
-  - label: arc_challenge_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ctx_ce_wrapper: true
+#   - label: arc_challenge_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ctx_ce_wrapper: true
 
-  - label: boolq_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ctx_ce_wrapper: true
+#   - label: boolq_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ctx_ce_wrapper: true
 
-  - label: sciq_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ctx_ce_wrapper: true
+#   - label: sciq_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ctx_ce_wrapper: true
   
 
-  ##########################
-  # Imbue evals
-  ##########################
-  - label: imbue_code_comprehension
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   ##########################
+#   # Imbue evals
+#   ##########################
+#   - label: imbue_code_comprehension
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: imbue_gsm8k
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: imbue_gsm8k
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
   
-  - label: imbue_codegen
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: imbue_codegen
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  # And soft versions
-  - label: imbue_code_comprehension
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   # And soft versions
+#   - label: imbue_code_comprehension
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: imbue_gsm8k
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: imbue_gsm8k
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: imbue_codegen
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: imbue_codegen
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  ##########################
-  # MMLU evals
-  ##########################
-  - label: mmlu_stem_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   ##########################
+#   # MMLU evals
+#   ##########################
+#   - label: mmlu_stem_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: mmlu_humanities_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: mmlu_humanities_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: mmlu_social_sciences_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: mmlu_social_sciences_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: mmlu_other_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: mmlu_other_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  # And soft versions
-  - label: mmlu_stem_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   # And soft versions
+#   - label: mmlu_stem_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: mmlu_humanities_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: mmlu_humanities_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: mmlu_social_sciences_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: mmlu_social_sciences_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: mmlu_other_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: mmlu_other_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
 
-  # MC versions
-  - label: mmlu_stem_mc_5shot_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   # MC versions
+#   - label: mmlu_stem_mc_5shot_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: mmlu_humanities_mc_5shot_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: mmlu_humanities_mc_5shot_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: mmlu_social_sciences_mc_5shot_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: mmlu_social_sciences_mc_5shot_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  - label: mmlu_other_mc_5shot_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
+#   - label: mmlu_other_mc_5shot_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
 
-  # And soft versions
-  - label: mmlu_stem_mc_5shot_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true  
+#   # And soft versions
+#   - label: mmlu_stem_mc_5shot_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true  
 
-  - label: mmlu_humanities_mc_5shot_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: mmlu_humanities_mc_5shot_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: mmlu_social_sciences_mc_5shot_test
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: mmlu_social_sciences_mc_5shot_test
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
 
-  - label: mmlu_other_mc_5shot_test 
-    type: downstream
-    subset_num_batches: 1000 # do not subset here
-    ce_wrapper: true
+#   - label: mmlu_other_mc_5shot_test 
+#     type: downstream
+#     subset_num_batches: 1000 # do not subset here
+#     ce_wrapper: true
     

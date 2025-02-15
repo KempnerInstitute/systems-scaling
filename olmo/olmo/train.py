@@ -205,7 +205,7 @@ class Trainer:
 
     @property
     def tokens_per_batch(self) -> int:
-        return self.cfg.training.batch_size * self.cfg.model.max_sequence_length
+        return self.cfg.training.batch_size * self.cfg.model.context_length
 
     @property
     def batches_per_epoch(self) -> int:
@@ -331,7 +331,7 @@ class Trainer:
             "global_train_tokens_seen",
             state_dict.get("global_data_step", self.global_step)  # for backwards compatibility
             * self.cfg.training.batch_size
-            * self.cfg.model.max_sequence_length,
+            * self.cfg.model.context_length,
         )
 
         if not self.cfg.restore_dataloader:
@@ -1069,8 +1069,8 @@ class Trainer:
 
                     batch_size, seq_len = batch["input_ids"].shape
                     assert (
-                        seq_len == self.cfg.model.max_sequence_length
-                    ), f"{seq_len} is not {self.cfg.model.max_sequence_length}"
+                        seq_len == self.cfg.model.context_length
+                    ), f"{seq_len} is not {self.cfg.model.context_length}"
                     assert (
                         batch_size == self.cfg.device_train_batch_size
                     ), f"{batch_size} is not {self.cfg.device_train_batch_size}"

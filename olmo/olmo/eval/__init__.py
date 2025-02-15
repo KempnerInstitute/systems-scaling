@@ -115,9 +115,9 @@ def build_evaluator(
 
 def build_evaluators(cfg: TrainConfig, device: torch.device) -> List[Evaluator]:
     evaluators = []
-    if cfg.use_tokenizer:
+    try:
         tokenizer = Tokenizer.from_train_config(cfg)
-    else:
+    except:
         tokenizer = None
     for eval_cfg in cfg.evaluators:
         evaluators.append(build_evaluator(cfg, eval_cfg, tokenizer, device))

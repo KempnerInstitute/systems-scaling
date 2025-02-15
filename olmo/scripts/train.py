@@ -214,22 +214,22 @@ def main(cfg: TrainConfig) -> None:
     seed_all(cfg.seed)
 
     # Construct data loader
-    # if cfg.data.index_path is not None:
-    #     log.info(f"Using fixed index path: {cfg.data.index_path}")
-    #     cfg.data.index_path = INDEX_DICT.get(cfg.data.index_path, cfg.data.index_path)
-    #     train_loader = build_train_dataloader_fixed_index(cfg)
-    # elif cfg.sft_dataset is not None:
-    #     dataset_labels = cfg.sft_dataset.label.split(",")
-    #     data_cfgs = []
-    #     for label in dataset_labels:
-    #         data_cfg = copy.deepcopy(cfg.sft_dataset)
-    #         data_cfg.label = label
-    #         data_cfgs.append(data_cfg)
-    #     train_loader = build_sft_dataloader(cfg, data_cfgs)
-    # else:
-    #     train_loader = build_train_dataloader(cfg)
+    if cfg.datasets.index_path is not None:
+        log.info(f"Using fixed index path: {cfg.datasets.index_path}")
+        cfg.datasets.index_path = INDEX_DICT.get(cfg.datasets.index_path, cfg.datasets.index_path)
+        train_loader = build_train_dataloader_fixed_index(cfg)
+    elif cfg.sft_dataset is not None:
+        dataset_labels = cfg.sft_dataset.label.split(",")
+        data_cfgs = []
+        for label in dataset_labels:
+            data_cfg = copy.deepcopy(cfg.sft_dataset)
+            data_cfg.label = label
+            data_cfgs.append(data_cfg)
+        train_loader = build_sft_dataloader(cfg, data_cfgs)
+    else:
+        train_loader = build_train_dataloader(cfg)
 
-    train_loader, val_loader = data.create_dataloaders(cfg)
+    # train_loader, val_loader = data.create_dataloaders(cfg)
     log.info(f"Built train dataloader for dataset of size {train_loader.dataset.total_size}")
 
     # Construct evaluators.

@@ -434,6 +434,11 @@ class ModelConfig(BaseConfig):
     See :data:`TrainConfig.precision` instead.
     """
 
+    # Quantizations
+    # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
+    w_mx_format: Optional[str] = None
+    a_mx_format: Optional[str] = None
+
     @property
     def effective_n_kv_heads(self) -> int:
         if self.n_kv_heads is None:
