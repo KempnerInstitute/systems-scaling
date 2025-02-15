@@ -9,6 +9,7 @@ always_save_checkpoint: False
 wandb_log: True # disabled by default
 wandb_project: 'MX_nanoGPT_pretrain'
 wandb_entity: 'harvardml'
+wandb_group: 'gp2_format_sweep'
 wandb_run_name: 'gpt2' # 'run' + str(time.time())
 
 gradient_accumulation_steps: 1
@@ -37,8 +38,9 @@ model:
   dropout_p: 0.0
   context_length: 1024
   autocast_precision: bfloat16
-  w_mx_format: 'fp4_e2m1' # 'fp8_e5m2', 'fp6_e3m2', 'fp4_e2m1', 'int8'
-  a_mx_format: 'fp4_e2m1'
+  # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
+  w_mx_format: 'bfloat16'
+  a_mx_format: 'bfloat16'
   flash: False
   flex: True
   mlp_scale_factor: 4

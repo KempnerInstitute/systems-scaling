@@ -21,6 +21,8 @@ from olmo.data import (
     build_sft_dataloader,
     build_train_dataloader_fixed_index,
 )
+from tmrc.tmrc_core.training import data, train
+
 from olmo.eval import build_evaluators
 from olmo.exceptions import OLMoCliError, OLMoConfigurationError
 from olmo.model import OLMo
@@ -226,6 +228,8 @@ def main(cfg: TrainConfig) -> None:
         train_loader = build_sft_dataloader(cfg, data_cfgs)
     else:
         train_loader = build_train_dataloader(cfg)
+
+    train_loader, val_loader = data.create_dataloaders(dataset_config)
     log.info(f"Built train dataloader for dataset of size {train_loader.dataset.total_size}")
 
     # Construct evaluators.

@@ -16,6 +16,7 @@ def test_format_parameters():
     assert(max_norm == 2**15 * (1 + 1023/1024))
     assert(min_norm == 2**(-14))
     print("Float16 Pass!")
+    
     ebits, mbits, emax, max_norm, min_norm = _get_format_params("fp16")
     assert(ebits == 5)
     assert(emax == 15)
