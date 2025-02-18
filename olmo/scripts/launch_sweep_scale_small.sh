@@ -1,13 +1,14 @@
 #!/bin/bash
+#SBATCH --account=kempner_grads
 #SBATCH --job-name=color-filter
 #SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/olmo/logs/%A_%a.log
-#SBATCH --nodes=1             
+#SBATCH --nodes=4         
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4    
 #SBATCH --cpus-per-task=16
 #SBATCH --time=36:00:00
 #SBATCH --mem=100GB		
-#SBATCH --account=kempner_grads
+
 #SBATCH --partition=kempner
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END

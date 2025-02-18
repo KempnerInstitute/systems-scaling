@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=tokenize
 #SBATCH --account=kempner_sham_lab
-#SBATCH --output=/n/holyscratch01/kempner_fellows/Lab/data/slurm_logs/%A_%a.log
+#SBATCH --output=/n/ws/Lab/data/slurm_logs/%A_%a.log
 #SBATCH --nodes=1             
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1    
