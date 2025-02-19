@@ -47,7 +47,7 @@ def get_path(path):
 
 
 def build_memmap_dataset(
-    train_config: TrainConfig, data_config: DataConfig, include_instance_metadata: bool = True
+    train_config: TrainConfig, data_config: DataConfig, include_instance_metadata: bool = True, mode: str = 'train'
 ) -> MemMapDataset:
     paths: List[str]
     metadata: List[Dict[str, Any]] = []
@@ -64,6 +64,13 @@ def build_memmap_dataset(
                 paths = list(path.glob("*/*/*.npy")) + list(path.glob("*/*/*.ds"))
             if len(paths) == 0:
                 raise OLMoConfigurationError(f"no data found at {path}")
+        
+        # Custom logic for RedPajama
+        if mode == 'val':
+            paths = [p for p in paths if p.suffix == '.bin' and p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin'))]
+        else:
+            paths = [p for p in paths if not (p.suffix == '.bin' and p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin')))]
+        
         for path in paths:
             metadata.append({"path": str(path)})
     elif data_config.datasets:
@@ -80,6 +87,13 @@ def build_memmap_dataset(
                     label_paths = list(Path(path).glob("*/*/*.npy")) + list(Path(path).glob("*/*/*.ds"))
                 if len(label_paths) == 0:
                     raise OLMoConfigurationError(f"no data found at {path}")
+            
+            # Custom logic for RedPajama
+            if mode == 'val':
+                label_paths = [p for p in label_paths if p.suffix == '.bin' and p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin'))]
+            else:
+                label_paths = [p for p in label_paths if not (p.suffix == '.bin' and p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin')))]
+            
             paths.extend(label_paths)
             metadata.extend([{"label": label}] * len(label_paths))
     else:
@@ -112,7 +126,7 @@ def build_eval_dataloader(
     batch_size: int,
     shuffle: bool = True,
 ) -> DataLoader:
-    dataset = build_memmap_dataset(train_config, data_config, include_instance_metadata=True)
+    dataset = build_memmap_dataset(train_config, data_config, include_instance_metadata=True, mode='val')
     collator = DataCollator(pad_direction=data_config.pad_direction, pad_token_id=train_config.model.pad_token_id)
     if data_config.drop_last:
         # Make sure batch size is small enough.

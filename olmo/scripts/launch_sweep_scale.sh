@@ -1,15 +1,15 @@
 #!/bin/bash
 #SBATCH --job-name=color-filter
-#SBATCH --output=/n/holyscratch01/sham_lab/color-scale/logs/%A_%a.log
+#SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/olmo/logs/%A_%a.log
 #SBATCH --nodes=4              
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4    
 #SBATCH --cpus-per-task=24
-#SBATCH --time=72:00:00
+#SBATCH --time=71:00:00
 #SBATCH --mem=100GB		
-#SBATCH --account=kempner_sham_lab
+#SBATCH --account=kempner_grads
 #SBATCH --partition=kempner_h100
-#SBATCH --constraint=h100
+
 #SBATCH --array=1-6
 #SBATCH --exclude=holygpu8a15401
 
@@ -36,7 +36,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/holyscratch01/sham_lab/color-scale/ckpts"
+export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

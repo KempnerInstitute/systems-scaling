@@ -9,7 +9,7 @@
 #SBATCH --time=36:00:00
 #SBATCH --mem=100GB		
 
-#SBATCH --partition=kempner
+#SBATCH --partition=kempner_h100
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
 #SBATCH --exclude=holygpu8a15401
