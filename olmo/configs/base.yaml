@@ -1,8 +1,8 @@
-run_name: color-filter
+run_name: test-olmo-debug-precision
 seed: 0
 dry_run: false
 
-max_duration: 24000 # ~12B tokens for batches of 256 x 2048
+max_duration: 48000 # ~12B tokens for batches of 256 x 2048
 training: 
   batch_size: 256 # global_train_batch_size
 device_train_microbatch_size: 32 # For H100 w/color, need smaller for RHO methods
@@ -12,7 +12,7 @@ wandb:
   name: ${run_name}
   log_interval: ${console_log_interval}
   entity: harvardml
-  project: color-scale
+  project: test-precision-olmo
   group: debug
 
 model:
@@ -21,8 +21,8 @@ model:
   mlp_ratio: 4
   # mlp_hidden_size: 4096
   n_heads: 16
-  n_layers: 12
-  context_length: 2048
+  n_layers: 6 # 12
+  context_length: 512 #2048
   rope: true
   attention_layer_norm: true
   attention_layer_norm_with_affine: true 
