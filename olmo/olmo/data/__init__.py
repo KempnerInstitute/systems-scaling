@@ -216,7 +216,13 @@ def build_train_dataloader(train_config: TrainConfig, world_size: Optional[int] 
         collator = DataCollator(
             pad_direction=train_config.datasets.pad_direction, pad_token_id=train_config.model.pad_token_id
         )
-    return DataLoader(
+
+    
+    # print(   dataset)
+    print(train_config.device_train_batch_size, train_config.datasets.drop_last, 'num_workers', train_config.datasets.num_workers,
+          train_config.datasets.pin_memory, train_config.datasets.num_workers, train_config.datasets.prefetch_factor)
+    print('building data loader') 
+    dataloader = DataLoader(
         dataset,
         batch_size=train_config.device_train_batch_size,
         drop_last=train_config.datasets.drop_last,
@@ -227,6 +233,8 @@ def build_train_dataloader(train_config: TrainConfig, world_size: Optional[int] 
         persistent_workers=False if train_config.datasets.num_workers == 0 else train_config.datasets.persistent_workers,
         timeout=train_config.datasets.timeout,
     )
+    print('built data loader') 
+    return dataloader
 
 
 def build_train_dataloader_fixed_index(train_config: TrainConfig) -> DataLoader:

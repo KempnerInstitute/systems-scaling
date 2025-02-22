@@ -65,13 +65,14 @@ class IterableDataset(torch.utils.data.IterableDataset[Dict[str, Any]]):
         self.device_batch_size = global_batch_size // self.world_size
         self.global_indices_file: Optional[Path] = None
         self.work_dir = work_dir
-
+        
         if work_dir is not None:
             self._build_and_save_global_indices()
 
     def _build_and_save_global_indices(self):
         assert self.work_dir is not None
         self.global_indices_file = Path(self.work_dir) / "global_indices.npy"
+        
         if self.fs_local_rank == 0:
             log.info("Saving global data order indices...")
             self.global_indices_file.parent.mkdir(parents=True, exist_ok=True)

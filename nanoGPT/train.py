@@ -176,6 +176,7 @@ mx_specs = {
         'custom_cuda': True,
         # For quantization-aware finetuning, do backward pass in FP32
         'quantize_backprop': True,
+        
     }
 mx_specs = finalize_mx_specs(mx_specs)
 mx_mapping.inject_pyt_ops(mx_specs)
@@ -191,6 +192,7 @@ if init_from == 'scratch':
     gptconf = GPTConfig(**model_args)
     # model = GPT(gptconf, mx_specs)
     model = GPT(gptconf)
+
 elif init_from == 'resume':
     print(f"Resuming training from {out_dir}")
     # resume training from a checkpoint.
@@ -367,6 +369,7 @@ while True:
             # I really dislike that this bloats the code and forces us to repeat code
             # looking at the source of that context manager, it just toggles this variable
             model.require_backward_grad_sync = (micro_step == gradient_accumulation_steps - 1)
+        import pdb; pdb.set_trace()
         with ctx:
             logits, loss = model(X, Y)
             loss = loss / gradient_accumulation_steps # scale the loss to account for gradient accumulation
@@ -386,6 +389,7 @@ while True:
         else:
             X = tok_ids
      
+        import pdb; pdb.set_trace()
         # optimizer.zero_grad()
         # backward pass, with gradient scaling if training in fp16
         loss.backward()

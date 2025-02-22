@@ -8,7 +8,7 @@
   # - smollm-corpus
 
 training:
-  batch_size: 1024 # global_train_batch_size
+  batch_size: 24 # global_train_batch_size
   
 save_interval: 1000
 save_interval_unsharded: 100000
@@ -16,7 +16,7 @@ save_num_checkpoints_to_keep: 1
 save_num_unsharded_checkpoints_to_keep: 1
 sweep:
 - device_eval_batch_size: 64
-  device_train_microbatch_size: 128
+  device_train_microbatch_size: 2 #128
   eval_interval: 650
   max_duration: 3254
   model:

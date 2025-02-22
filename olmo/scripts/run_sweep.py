@@ -92,7 +92,7 @@ def run(cli_args):
     ]
     for k, v in overrides.items():
         launch_args.append(f"--{k}={v}")
-
+    print('launch_args', launch_args)
     if "debug" in cli_args:
         launch_args.append("--wandb=null")
         launch_args.append("--save_overwrite")
@@ -113,4 +113,5 @@ def path_glob(*paths):
 if __name__ == "__main__":
     OmegaConf.register_new_resolver("path.glob", path_glob, replace=True)
     cli_args = OmegaConf.from_cli()
+    print('run in run_Sweep')
     run(cli_args)

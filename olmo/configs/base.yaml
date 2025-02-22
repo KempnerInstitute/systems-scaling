@@ -47,8 +47,8 @@ model:
 
   # quantizations
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
-  w_mx_format: 'int8'
-  a_mx_format: 'int8'
+  w_mx_format: 'fp4_e2m1'
+  a_mx_format: 'fp4_e2m1'
 
 # compile: null
 
@@ -92,7 +92,7 @@ datasets:
   tokenizer_used: t5-base
   memmap_dtype: uint16
   pad_direction: right
-  num_workers: 16 
+  num_workers: 0
   drop_last: true
   pin_memory: true
   prefetch_factor: 16

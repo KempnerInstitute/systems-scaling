@@ -3,7 +3,10 @@ export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-l
 module load gcc/12.2.0-fasrc01```
 
 
-I made small edits in microxcaling.
+Small edits in microxcaling. 
+* microxcaling: 
+* Tatm: data/datasets.py
+
 
 
 systems-scaling/

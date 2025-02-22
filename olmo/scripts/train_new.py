@@ -1,19 +1,21 @@
-"""Run this script with 'torchrun'."""
 import os
-import copy
-import gzip
-import logging
 import sys
+import copy
+import logging
 from pathlib import Path
 from typing import Optional, TextIO
+from packaging import version
+import wandb
 
 import torch
+import torch.nn as nn
+import torch.optim as optim
 import torch.distributed as dist
 import torch.multiprocessing as mp
-import wandb
-from packaging import version
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
-from torch.distributed.fsdp import ShardingStrategy
+from torch.distributed.fsdp.fully_sharded_data_parallel import CPUOffload
+from torch.distributed.fsdp.fully_sharded_data_parallel import BackwardPrefetch
+from torch.distributed.fsdp.wrap import wrap
 
 from olmo.config import CheckpointType, TrainConfig
 from olmo.data import (
@@ -41,9 +43,32 @@ from olmo.registry import MODEL_DICT, INDEX_DICT
 
 from mx import finalize_mx_specs, mx_mapping
 
+def setup(rank, world_size):
+    """Initialize the process group for FSDP."""
+    master_addr = os.environ.get("MASTER_ADDR", "127.0.0.1")
+    master_port = os.environ.get("MASTER_PORT", "29500")
+    dist.init_process_group(backend="nccl", init_method=f"tcp://{master_addr}:{master_port}", rank=rank, world_size=world_size)
+    torch.cuda.set_device(rank)
+
+def cleanup():
+    """Destroy the process group after training."""
+    dist.destroy_process_group()
+
+class SimpleModel(nn.Module):
+    """A basic model for FSDP testing."""
+    def __init__(self):
+        super(SimpleModel, self).__init__()
+        self.fc1 = nn.Linear(10, 100)
+        self.relu = nn.ReLU()
+        self.fc2 = nn.Linear(100, 1)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        return x
+
 log = logging.getLogger("train")
-
-
 def build_models(cfg: TrainConfig):
     # Initialize the model.
     log.info("Building model...")
@@ -127,8 +152,35 @@ def build_models(cfg: TrainConfig):
     log.info(fsdp_model)
     return olmo_model, fsdp_model
 
+def train(rank, world_size, cfg):
+    """Training loop for each process in FSDP."""
+    setup(rank, world_size)
 
-def main(cfg: TrainConfig) -> None:
+    torch.manual_seed(42)
+    model = SimpleModel().to(rank)
+
+    # Wrap model in FSDP
+    model = FSDP(model, 
+                 cpu_offload=CPUOffload(offload_params=False), 
+                 backward_prefetch=BackwardPrefetch.BACKWARD_PRE)
+
+    optimizer = optim.AdamW(model.parameters(), lr=0.01)
+    criterion = nn.MSELoss()
+
+    # Dummy input and target
+    x = torch.randn(16, 10).to(rank)
+    y = torch.randn(16, 1).to(rank)
+
+    for epoch in range(1):
+        optimizer.zero_grad()
+        output = model(x)
+        loss = criterion(output, y)
+        loss.backward()
+        optimizer.step()
+
+        print(f"Rank {rank}, Epoch {epoch}, Loss: {loss.item()}")
+
+    cleanup()
 
     # Ensure run name set.
     if cfg.run_name is None:
@@ -227,124 +279,16 @@ def main(cfg: TrainConfig) -> None:
         train_loader = build_train_dataloader(cfg)
 
     # train_loader, val_loader = data.create_dataloaders(cfg)
-    log.info(f"Built train dataloader for dataset of size {train_loader.dataset.total_size}")
-
-    # Construct evaluators.
-    evaluators = build_evaluators(cfg, device)
-    barrier()
-
-    # Build models
-    olmo_model, fsdp_model = build_models(cfg)
-
-    # Construct optimizer and learning rate scheduler.
-    optim = build_optimizer(cfg, fsdp_model)
-    scheduler = build_scheduler(cfg)
-
-    # Data indices file.
-    indices_file: Optional[TextIO] = None
-    if cfg.save_data_indices:
-        indices_file_path = Path(cfg.save_folder) / f"data-indices/rank{get_global_rank()}.tsv.gz"
-        if indices_file_path.exists() and not cfg.save_overwrite:
-            raise OLMoConfigurationError(f"{indices_file_path} already exists, use --save_overwrite to overwrite")
-        indices_file_path.parent.mkdir(exist_ok=True, parents=True)
-        indices_file = gzip.open(indices_file_path, "wt")
-
-    # Consolidate components into `Trainer` object.
-    with Trainer(
-        cfg=cfg,
-        epoch=cfg.epoch,
-        model=olmo_model,
-        fsdp_model=fsdp_model,
-        optim=optim,
-        scheduler=scheduler,
-        train_loader=train_loader,
-        device=device,
-        evaluators=evaluators,
-        indices_file=indices_file,
-    ) as trainer:
-        if not cfg.dry_run and not cfg.no_pre_train_checkpoint and cfg.load_path is None:
-            checkpoint_type = (
-                CheckpointType.sharded if cfg.save_num_checkpoints_to_keep != 0 else CheckpointType.unsharded
-            )
-
-            # We save a checkpoint up-front to make sure this won't fail (due to disk space or whatever).
-            log.info("Saving pre-train checkpoint...")
-            checkpoint_path, local_checkpoint_cache = trainer.save_checkpoint(checkpoint_type=checkpoint_type)
-            log.info(f"Checkpoint saved to {checkpoint_path}")
-
-            # And they we verify that we can load it.
-            log.info("Attempting to load pre-train checkpoint...")
-            trainer.restore_checkpoint(
-                checkpoint_path, checkpoint_type=checkpoint_type, local_cache=local_checkpoint_cache
-            )
-            log.info("Checkpoint successfully loaded")
-
-            # NOTE: https://github.com/allenai/LLM/issues/233
-            #  log.info("Removing pre-train checkpoint...")
-            #  trainer.remove_checkpoint(checkpoint_type=checkpoint_type)
-            #  log.info("Successfully removed checkpoint")
-
-        if cfg.load_path is not None:
-            cfg.load_path = MODEL_DICT.get(cfg.load_path, cfg.load_path)
-            log.info(f"Loading checkpoint from {cfg.load_path}...")
-            trainer.restore_checkpoint(
-                cfg.load_path,
-                load_optimizer_state=not cfg.reset_optimizer_state,
-                load_trainer_state=not cfg.reset_trainer_state,
-                checkpoint_type=cfg.load_checkpoint_type,
-            )
-            log.info("Checkpoint successfully loaded")
-
-            # If we have to, set a new scheduler:
-            if cfg.reset_optimizer_state and not cfg.reset_trainer_state:
-                trainer.scheduler = BoltOnWarmupScheduler.wrap(
-                    trainer.scheduler,
-                    trainer.global_step,
-                    int(trainer.global_step + cfg.scheduler.t_warmup),
-                )
-
-        if cfg.force_save_unsharded:
-            log.info("Saving unsharded checkpoint...")
-            checkpoint_path, _ = trainer.save_checkpoint(checkpoint_type=CheckpointType.unsharded)
-            log.info(f"Unsharded checkpoint saved to {checkpoint_path}")
-
-
-        # if cfg.compile is not None:
-            # TODO (epwalsh): trying to compile the whole train step results in a compile-time error from within
-            # the optimizer. We should investigate this further at some point.
-            #  trainer.train_step = torch.compile(trainer.train_step, **cfg.compile.asdict())
-            # trainer.train_batch = torch.compile(trainer.train_batch, **cfg.compile.asdict())  # type: ignore
-            # TODO (epwalsh): compiling the `eval_batch()` method is a little sketchy since the inputs will look
-            # different for different eval tasks. That might be okay, but it might not be.
-            #  trainer.eval_batch = torch.compile(trainer.eval_batch, **cfg.compile.asdict())  # type: ignore
-            # Alternatively, could just do this:
-            #  trainer.fsdp_model = torch.compile(trainer.fsdp_model, **cfg.compile.asdict())
-
-        if not cfg.dry_run:
-            log.info("Starting training...")
-            trainer.fit()
-            log.info("Training complete")
-        else:
-            log.info("Dry run complete")
+    # log.info(f"Built train dataloader for dataset of size {train_loader.dataset.total_size}")
 
 
 if __name__ == "__main__":
     try:
-        mp.set_start_method("spawn", force=True)
-    except RuntimeError as e:
-        print(f"failed to set multiprocessing start method: {e}")
-
-    # Initialize process group.
-    dist.init_process_group(backend="nccl", )
-
-    prepare_cli_environment()
-
-    log.info(f"multiprocessing start method set to '{mp.get_start_method()}'")
-
-    try:
         yaml_path, args_list = sys.argv[1], sys.argv[2:]
     except IndexError:
         raise OLMoCliError(f"Usage: {sys.argv[0]} [CONFIG_PATH] [OPTIONS]")
+    world_size = 4 # torch.cuda.device_count()
 
     cfg = TrainConfig.load(yaml_path, [clean_opt(s) for s in args_list])
-    main(cfg)
+
+    mp.spawn(train, args=(world_size, cfg), nprocs=world_size, join=True)

@@ -1,11 +1,11 @@
-data:
-  paths:
-  - fineweb-100b
-  - starcoder
-  - proof-pile-2
-  - fineweb-edu-100b
-  - slimpajama-chunk1
-  - smollm-corpus
+# data:
+#   paths:
+#   - fineweb-100b
+#   - starcoder
+#   - proof-pile-2
+#   - fineweb-edu-100b
+#   - slimpajama-chunk1
+#   - smollm-corpus
 global_train_batch_size: 1024
 save_interval: 1000
 save_interval_unsharded: 100000

@@ -2,24 +2,33 @@
 #SBATCH --account=kempner_grads
 #SBATCH --job-name=color-filter
 #SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/olmo/logs/%A_%a.log
-#SBATCH --nodes=4         
-#SBATCH --ntasks-per-node=4
-#SBATCH --gpus-per-node=4    
-#SBATCH --cpus-per-task=16
-#SBATCH --time=36:00:00
-#SBATCH --mem=100GB		
-
-#SBATCH --partition=kempner
+#SBATCH --nodes=1     
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node=1
+#SBATCH --cpus-per-task=24
+#SBATCH --time=71:00:00
+#SBATCH --mem=100GB	# Ask for fully preserved nodes
+#SBATCH --partition=kempner_h100
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
 #SBATCH --exclude=holygpu8a15401
 
 # sleep $((RANDOM % 120))
 
+# module load cuda/12.4.1-fasrc01
+# export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-linux/include
+
+module load cudnn
+export LD_LIBRARY_PATH=/n/sw/helmod-rocky8/apps/Core/cuda/11.8.0-fasrc01/lib64:$LD_LIBRARY_PATH
+module load gcc/10.2.0-fasrc01
+
+
+source ~/.bashrc
+mamba deactivate
+mamba activate sys
 # Custom environment
 # source ~/.bashrc
 # conda deactivate
-# conda activate rl_ox
 
 
 export HF_DATASETS_OFFLINE=1 # Only use cached data
@@ -60,4 +69,4 @@ export PYTHONPATH=.:${PYTHONPATH}
 export PYTORCH_KERNEL_CACHE_PATH=/tmp/pytorch_kernel_cache/
 mkdir -p $PYTORCH_KERNEL_CACHE_PATH
 
-python scripts/run_sweep.py config=${CONFIG} sweep_config=${SWEEP_CONFIG}
+python -u scripts/run_sweep.py config=${CONFIG} sweep_config=${SWEEP_CONFIG}

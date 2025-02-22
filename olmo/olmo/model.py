@@ -1177,6 +1177,7 @@ class OLMo(nn.Module):
         all_hidden_states = []
 
         # Apply blocks one-by-one.
+        print('self.config.block_group_size', self.config.block_group_size)
         if self.config.block_group_size == 1:
             for block_idx, block in enumerate(self.transformer.blocks):
                 if output_hidden_states:
