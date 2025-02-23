@@ -113,5 +113,4 @@ def path_glob(*paths):
 if __name__ == "__main__":
     OmegaConf.register_new_resolver("path.glob", path_glob, replace=True)
     cli_args = OmegaConf.from_cli()
-    print('run in run_Sweep')
     run(cli_args)

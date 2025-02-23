@@ -1,24 +1,38 @@
 #!/bin/bash
-#SBATCH --job-name=olmo-low-prec
+#SBATCH --job-name=test-olmo-run
 #SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/olmo/logs/%A_%a.log
 #SBATCH --nodes=1              
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4    
 #SBATCH --cpus-per-task=24
-#SBATCH --time=72:00:00
-#SBATCH --mem=0	
+#SBATCH --time=71:30:00
+#SBATCH --mem=1000GB		
 #SBATCH --account=kempner_grads
 #SBATCH --partition=kempner_h100
-#SBATCH --constraint=h100
-#SBATCH --array=1-6
-#SBATCH --exclude=holygpu8a15401
+#SBATCH --mail-user=csu@g.harvard.edu
+#SBATCH --mail-type=END
+#SBATCH --array=1-96
 
 # sleep $((RANDOM % 120))
 
+
+# Custom environment
+source ~/.bashrc
+mamba deactivate
+mamba activate sys
+
+# module load cudnn
+# export LD_LIBRARY_PATH=/n/sw/helmod-rocky8/apps/Core/cuda/11.8.0-fasrc01/lib64:$LD_LIBRARY_PATH
+# module load gcc/10.2.0-fasrc01
 # Custom environment
 # source ~/.bashrc
 # conda deactivate
-# conda activate rl_ox
+
+module load cuda/12.4.1-fasrc01
+export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-linux/include
+module load gcc/12.2.0-fasrc01
+
+
 
 export HF_DATASETS_OFFLINE=1 # Only use cached data
 
@@ -36,7 +50,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/holyscratch01/sham_lab/color-scale/ckpts"
+export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

@@ -3,6 +3,7 @@ log
 wandb
 out
 out-shakespeare-char
+LLM
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

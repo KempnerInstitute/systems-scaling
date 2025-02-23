@@ -5,18 +5,16 @@ description = 'The Microsoft MX floating point library'
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "torch==2.2.0",
-    "torchvision==0.16",
-    "torchaudio==2.1.0"
+    "torch==2.4.0",
 ]
 license = { file = "LICENSE" }
-keywords = ["mx", "floating point", "math", "mathematics", "machine learning", "deep learning", "artificial intelligence", "ai", "ml", "dl", "torch", "torchvision", "torchaudio"]
+keywords = ["mx", "floating point", "math", "mathematics", "machine learning", "deep learning", "artificial intelligence", "ai", "ml", "dl", "torch"]
 authors = [
   { name = "The Microsoft CAST Algorithms Team", email = "placeholder@microsoft.com" },
 ]
 
 [build-system]
-requires = ["hatchling", "hatch-vcs", "pytest", "ninja", "wheel", "torch", "torchvision", "torchaudio"]
+requires = ["hatchling", "hatch-vcs", "pytest", "ninja", "wheel", "torch"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]

@@ -16,7 +16,7 @@ save_num_checkpoints_to_keep: 1
 save_num_unsharded_checkpoints_to_keep: 1
 sweep:
 - device_eval_batch_size: 64
-  device_train_microbatch_size: 2 #128
+  device_train_microbatch_size: 128
   eval_interval: 650
   max_duration: 3254
   model:

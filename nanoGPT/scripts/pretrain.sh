@@ -16,13 +16,14 @@ source ~/.bashrc
 mamba deactivate
 mamba activate sys
 
-module load cudnn
-export LD_LIBRARY_PATH=/n/sw/helmod-rocky8/apps/Core/cuda/11.8.0-fasrc01/lib64:$LD_LIBRARY_PATH
-module load gcc/10.2.0-fasrc01
+# module load cudnn
+# export LD_LIBRARY_PATH=/n/sw/helmod-rocky8/apps/Core/cuda/11.8.0-fasrc01/lib64:$LD_LIBRARY_PATH
+# module load gcc/10.2.0-fasrc01
 
-# module load cuda/12.4.1-fasrc01
-# export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-linux/include
-# module load gcc/12.2.0-fasrc01s
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/miniconda3/lib/
+module load cuda/12.4.1-fasrc01
+export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-linux/include
+module load gcc/12.2.0-fasrc01
 
 # Training on single node
 torchrun --standalone --nproc_per_node=4 train.py

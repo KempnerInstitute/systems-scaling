@@ -643,8 +643,8 @@ class OLMoSequentialBlock(OLMoBlock):
     def __init__(self, layer_id: int, config: ModelConfig, cache: BufferCache):
         super().__init__(layer_id, config, cache)
         # Layer norms.
-        self.attn_norm = LayerNorm.build(config)
-        self.ff_norm = LayerNorm.build(config)
+        self.attn_norm = nn.LayerNorm(config.d_model) # LayerNorm.build(config)
+        self.ff_norm = nn.LayerNorm(config.d_model) # LayerNorm.build(config)
         # Attention input projection. Projects x -> (q, k, v)
 
         head_dim = config.d_model // config.n_heads
@@ -687,16 +687,18 @@ class OLMoSequentialBlock(OLMoBlock):
         #                      k, v: (batch_size, seq_len, d_model // n_heads)
         #  - for group query attn q: (batch_size, seq_len, d_model)
         #                      k, v: (batch_size, seq_len, d_model // n_kv_heads)
+        
         if self._activation_checkpoint_fn is not None:
             qkv = self.att_proj(self._activation_checkpoint_fn(self.attn_norm, x))
         else:
             qkv = self.att_proj(self.attn_norm(x))
 
+        
         if self.config.clip_qkv is not None:
             qkv.clamp_(min=-self.config.clip_qkv, max=self.config.clip_qkv)
-
+        
         q, k, v = qkv.split(self.fused_dims, dim=-1)
-
+        
         # Get attention scores.
         if self._activation_checkpoint_fn is not None:
             att, cache = self._activation_checkpoint_fn(  # type: ignore
@@ -711,11 +713,13 @@ class OLMoSequentialBlock(OLMoBlock):
 
         # Add feed-forward projection.
         # shape: (batch_size, seq_len, d_model)
+        
         og_x = x
         if self._activation_checkpoint_fn is not None:
             x = self._activation_checkpoint_fn(self.ff_norm, x)  # type: ignore
         else:
             x = self.ff_norm(x)
+        
         x = self.ff_proj(x)
         if self._activation_checkpoint_fn is not None:
             x = self._activation_checkpoint_fn(self.act, x)  # type: ignore
@@ -965,7 +969,7 @@ class OLMo(nn.Module):
                     config.embedding_size or config.vocab_size, config.d_model, device=config.init_device
                 ),
                 emb_drop=Dropout(config.embedding_dropout),
-                ln_f=LayerNorm.build(config),
+                ln_f=nn.LayerNorm(config.d_model), # LayerNorm.build(config),
             )
         )
 
@@ -1177,7 +1181,7 @@ class OLMo(nn.Module):
         all_hidden_states = []
 
         # Apply blocks one-by-one.
-        print('self.config.block_group_size', self.config.block_group_size)
+        
         if self.config.block_group_size == 1:
             for block_idx, block in enumerate(self.transformer.blocks):
                 if output_hidden_states:

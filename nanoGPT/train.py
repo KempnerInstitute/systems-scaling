@@ -369,7 +369,7 @@ while True:
             # I really dislike that this bloats the code and forces us to repeat code
             # looking at the source of that context manager, it just toggles this variable
             model.require_backward_grad_sync = (micro_step == gradient_accumulation_steps - 1)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         with ctx:
             logits, loss = model(X, Y)
             loss = loss / gradient_accumulation_steps # scale the loss to account for gradient accumulation
@@ -389,7 +389,6 @@ while True:
         else:
             X = tok_ids
      
-        import pdb; pdb.set_trace()
         # optimizer.zero_grad()
         # backward pass, with gradient scaling if training in fp16
         loss.backward()
