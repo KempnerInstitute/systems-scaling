@@ -16,6 +16,7 @@ $ torchrun --nproc_per_node=8 --nnodes=2 --node_rank=1 --master_addr=123.456.123
 (If your cluster does not have Infiniband interconnect prepend NCCL_IB_DISABLE=1)
 """
 
+import argparse
 import os
 import time
 import math
@@ -33,6 +34,18 @@ from model import GPTConfig, GPT
 from mx import finalize_mx_specs, mx_mapping
 
 from tmrc.tmrc_core.training import data, train
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-p', '--precision', type=str, default="bfloat16",
+    choices=["float16", "fp16", "bfloat16", "bf16", "fp8_e5m2", "fp8_e4m3", "fp6_e3m2", "fp6_e2m3", "fp4_e2m1", "fp4", "int8", "int4"],
+    help="autocast precision")
+parser.add_argument('-r', '--round', type=str, default='None',
+    choices=['nearest', 'floor', 'even', 'stocastic', 'None'],
+    help='mx round')
+cml_args = parser.parse_args()
+tmrc_autocast_precision, mx_round_option = cml_args.precision, cml_args.round
+
+print(f'override autocast precision {tmrc_autocast_precision}, round {mx_round_option}')
 
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
@@ -106,6 +119,19 @@ else:
     ddp_world_size = 1
 
 config_path, config_name = train.get_config_path()
+
+# hack
+new_config_name = config_name + "_" + tmrc_autocast_precision
+if not os.path.isfile(os.path.join(config_path, new_config_name + ".yaml")):
+    with open(os.path.join(config_path, config_name + ".yaml"), "r") as f:
+        default_config_str = f.read()
+    new_config_str = default_config_str.replace(
+        "autocast_precision: bfloat16",
+        f"autocast_precision: {tmrc_autocast_precision}")
+    with open(os.path.join(config_path, new_config_name + ".yaml"), "r") as f:
+        f.write(new_config_str)
+config_name = new_config_name
+
 hydra.initialize(version_base=None, config_path=config_path)
 dataset_config = hydra.compose(config_name=config_name)
 
@@ -177,6 +203,8 @@ mx_specs = {
         # For quantization-aware finetuning, do backward pass in FP32
         'quantize_backprop': True,
     }
+if mx_round_option != 'None':
+    mx_specs['round'] = mx_round_option
 mx_specs = finalize_mx_specs(mx_specs)
 mx_mapping.inject_pyt_ops(mx_specs)
 

@@ -66,6 +66,12 @@ def _round_mantissa(A, bits, round, clamp=False):
         # find 0.5, 2.5, 4.5 ...
         maskA = ((absA - 0.5) % 2 == torch.zeros_like(A)).type(A.dtype)
         A = torch.sign(A) * (torch.floor(absA + 0.5) - maskA)
+    elif round == "stochastic":
+        A_floor, A_ceil = torch.floor(A), torch.ceil(A)
+        threshold = (A - A_floor) / (A_ceil - A_floor)
+        prob = torch.rand(A.size())
+        A = A_floor
+        A[prob <= threshold] = A_ceil
     else:
         raise Exception("Unrecognized round method %s" % (round))
 
