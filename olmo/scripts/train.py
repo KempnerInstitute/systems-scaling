@@ -140,6 +140,8 @@ def main(cfg: TrainConfig) -> None:
         cfg.load_path = None
 
     # Check for requeue ckpt
+    cfg.save_folder = cfg.save_folder.replace("mx_format", cfg.wandb.name)
+
     rq_path = Path(cfg.save_folder) / "latest"
     if rq_path.exists() and cfg.requeue:
         cfg.load_path = str(rq_path)
@@ -195,6 +197,7 @@ def main(cfg: TrainConfig) -> None:
     if cfg.wandb is not None and (get_global_rank() == 0 or not cfg.wandb.rank_zero_only):
         wandb_dir = Path(cfg.save_folder) / "wandb"
         wandb_dir.mkdir(parents=True, exist_ok=True)
+
         wandb.init(
             dir=wandb_dir,
             project=cfg.wandb.project,

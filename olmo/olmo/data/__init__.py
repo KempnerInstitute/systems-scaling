@@ -67,9 +67,9 @@ def build_memmap_dataset(
         
         # Custom logic for RedPajama
         if mode == 'val':
-            paths = [p for p in paths if p.suffix == '.bin' and p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin'))]
+            paths = [p for p in paths if p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin'))]
         else:
-            paths = [p for p in paths if not (p.suffix == '.bin' and p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin')))]
+            paths = [p for p in paths if not p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin'))]
         
         for path in paths:
             metadata.append({"path": str(path)})

@@ -11,9 +11,9 @@
 #SBATCH --partition=kempner_h100
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
-#SBATCH --array=1-96
+#SBATCH --array=1-4%1
 
-# sleep $((RANDOM % 120))
+sleep $((RANDOM % 240))
 
 
 # Custom environment
@@ -21,21 +21,12 @@ source ~/.bashrc
 mamba deactivate
 mamba activate sys
 
-# module load cudnn
-# export LD_LIBRARY_PATH=/n/sw/helmod-rocky8/apps/Core/cuda/11.8.0-fasrc01/lib64:$LD_LIBRARY_PATH
-# module load gcc/10.2.0-fasrc01
-# Custom environment
-# source ~/.bashrc
-# conda deactivate
-
+# sleep $(( SLURM_ARRAY_TASK_ID * 60 ))
 module load cuda/12.4.1-fasrc01
 export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-linux/include
 module load gcc/12.2.0-fasrc01
 
-
-
 export HF_DATASETS_OFFLINE=1 # Only use cached data
-
 export CONFIG=$1
 
 # Accept sweep config as argument
@@ -53,7 +44,7 @@ fi
 export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts"
 
 # TODO: does this help?
-# export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # Set ntasks if not set
 if [ -z "$SLURM_NTASKS_PER_NODE" ]

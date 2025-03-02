@@ -88,11 +88,12 @@ def run(cli_args):
         script_file,
         cli_args.config,
         f"--run_name=olmo_{slurm_job_id}_{slurm_task_id}",
-        f"--save_folder={checkpoints_path}/{slurm_job_id}_{slurm_task_id}/",
+        f"--save_folder={checkpoints_path}/mx_format_{slurm_task_id}/",
+        # f"--save_folder={checkpoints_path}/{slurm_job_id}_{slurm_task_id}/",
     ]
     for k, v in overrides.items():
         launch_args.append(f"--{k}={v}")
-    print('launch_args', launch_args)
+
     if "debug" in cli_args:
         launch_args.append("--wandb=null")
         launch_args.append("--save_overwrite")
