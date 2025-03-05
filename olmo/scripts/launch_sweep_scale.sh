@@ -11,7 +11,7 @@
 #SBATCH --partition=kempner_h100
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
-#SBATCH --array=1-4%1
+#SBATCH --array=9-96%1
 
 sleep $((RANDOM % 240))
 
