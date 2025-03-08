@@ -52,7 +52,6 @@ for kaplan in [False, True]:
                 N, D, L = get_data(drop_df, loss_name)
 
                 # import pdb; pdb.set_trace()
-                print('N', N)
 
                 params, _ = fit(N, D, L, kaplan=kaplan)
 
