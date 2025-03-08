@@ -6,8 +6,8 @@
 set -euo pipefail
 
 export NODENAME=$(hostname -s)
-# export MASTER_ADDR=$(scontrol show hostnames | head -n 1)
-export MASTER_ADDR=127.0.0.1  # Replace with the correct IPv4 address
+export MASTER_ADDR=$(scontrol show hostnames | head -n 1)
+# export MASTER_ADDR=127.0.0.1  # Replace with the correct IPv4 address
 export MASTER_PORT=$(($SLURM_JOB_ID % 199 + 39591))
 export WORLD_SIZE=$SLURM_NTASKS
 export RANK=$SLURM_PROCID

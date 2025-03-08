@@ -93,3 +93,26 @@ def init_weights(
         if config.init_fn == InitFnType.normal and getattr(module, "_is_residual", False):
             with torch.no_grad():
                 module.weight.div_(math.sqrt(2 * config.n_layers))
+
+
+def init_normal(
+    module: Union[nn.Linear, nn.Embedding],
+    std: float,
+    init_cutoff_factor: Optional[float] = None,
+):
+    # weights
+    if init_cutoff_factor is not None:
+        cutoff_value = init_cutoff_factor * std
+        if hasattr(module, "weight"):
+            nn.init.trunc_normal_(module.weight, mean=0.0, std=std, a=-cutoff_value, b=cutoff_value)
+        else:
+            nn.init.trunc_normal_(module, mean=0.0, std=std, a=-cutoff_value, b=cutoff_value)
+    else:
+        if hasattr(module, "weight"):
+            nn.init.normal_(module.weight, mean=0.0, std=std)
+        else:
+            nn.init.normal_(module, mean=0.0, std=std)
+
+    # biases
+    if isinstance(module, nn.Linear) and module.bias is not None:
+        nn.init.zeros_(module.bias)

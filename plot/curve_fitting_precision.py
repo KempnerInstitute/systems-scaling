@@ -11,7 +11,7 @@ from utils_scaling import chinchilla_curve, kaplan_curve
 
 import jax.numpy as jnp
 
-df = pd.read_csv("data/sweep.csv")
+df = pd.read_csv("data/temp.csv")
 df_big = pd.read_csv("data/extrapolation.csv")
 
 def get_data(drop_df, key = "train/CrossEntropyLoss"):
@@ -34,23 +34,34 @@ def get_params(params):
 losses = [col for col in df.columns if ("loss" in col or "CrossEntropyLoss" in col) and 
                           "ctx" not in col and "5shot" not in col and "imbue" not in col and "train" not in col]
 
+# formats = ["fp4_e2m1", "float16", "fp16", "bfloat16", "bf16", "fp8_e5m2", "fp8_e4m3", "fp6_e3m2", "fp6_e2m3", "fp4", "int8", "int4"]
+formats = ["fp4_e2m1"]
+
+
 opt_params_df = pd.DataFrame()
 for kaplan in [False, True]:
-    for i, data in enumerate(val_map.keys()):
-        for loss_name in losses:
-            print(f"Data = {data}, Loss = {loss_name}")
+    for i, w_format in enumerate(formats): # val_map.keys()
+        for i, a_format in enumerate(formats):
+            for loss_name in losses:
+                print(f"Data = {w_format}, {a_format}, Loss = {loss_name}")
+                # import pdb; pdb.set_trace()
 
-            drop_df = df[df["data"] == data]
+                drop_df = df[(df["model.w_mx_format"] == w_format) & (df["model.a_mx_format"] == a_format)]
+                # df[df["a_format"] == data]
 
-            N, D, L = get_data(drop_df, loss_name)
+                N, D, L = get_data(drop_df, loss_name)
 
-            params, _ = fit(N, D, L, kaplan=kaplan)
+                # import pdb; pdb.set_trace()
+                print('N', N)
 
-            params["kaplan"] = kaplan
-            params["data"] = data
-            params["loss_name"] = loss_name
-            params = pd.DataFrame([params.values], columns=params.index, index = [i])
-            opt_params_df = pd.concat([opt_params_df, params])
+                params, _ = fit(N, D, L, kaplan=kaplan)
+
+                params["kaplan"] = kaplan
+                params["w_format"] = w_format
+                params["a_format"] = a_format
+                params["loss_name"] = loss_name
+                params = pd.DataFrame([params.values], columns=params.index, index = [i])
+                opt_params_df = pd.concat([opt_params_df, params])
 
 
 # add columns for extrapolations and predictions

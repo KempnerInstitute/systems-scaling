@@ -105,7 +105,7 @@ def get_model_config_and_size(d_model, n_layers):
 
     # Rough estimate of proper batch size (note: note quite right)
     # TODO: fix this approximation
-    seq_len = model_defaults["max_sequence_length"]
+    seq_len = model_defaults["context_length"]
     activation_memory = 2 * (n_layers + 1) * (seq_len * d_model) * (4 + 4 + 2)  # Attention + ff hidden + norm
     attention_memory = 2 * n_layers * seq_len**2 * d_model // head_size
     output_memory = 2 * 4 * seq_len * 32000  # vocab size
@@ -130,7 +130,7 @@ def get_model_config_and_size(d_model, n_layers):
                 "d_model": d_model,
                 "n_heads": d_model // head_size,
                 "n_layers": n_layers,
-                "max_sequence_length": model_defaults["max_sequence_length"],
+                "context_length": model_defaults["context_length"],
             },
             "device_train_microbatch_size": bs,
             "device_eval_batch_size": min(bs, 64),  # Avoid OOM in eval bc no compiler
@@ -144,7 +144,7 @@ def expand_config(
     fwd_flops,
     config,
     global_bs=sweep_config["global_train_batch_size"],
-    seq_len=model_defaults["max_sequence_length"],
+    seq_len=model_defaults["context_length"],
 ):
     tok_bs = seq_len * global_bs
 
@@ -158,6 +158,9 @@ def expand_config(
     config["max_duration"] = steps
     config["scheduler"] = {"t_warmup": steps // 5}
     config["eval_interval"] = steps // 5
+    config["params"] = params
+    config["tokens"] = tokens
+    
     print(f"FLOPs: {float(flops)}, tokens: {tokens}, steps: {steps}")
     return config, tokens, steps
 

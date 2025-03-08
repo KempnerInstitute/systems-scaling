@@ -1,0 +1,8 @@
+[W307 21:52:50.262326595 socket.cpp:752] [c10d] The client socket cannot be initialized to connect to [holygpu8a11201.rc.fas.harvard.edu]:29500 (errno: 97 - Address family not supported by protocol).
+[W307 21:52:50.262363115 socket.cpp:752] [c10d] The client socket cannot be initialized to connect to [holygpu8a11201.rc.fas.harvard.edu]:29500 (errno: 97 - Address family not supported by protocol).
+[W307 21:52:50.262365515 socket.cpp:752] [c10d] The client socket cannot be initialized to connect to [holygpu8a11201.rc.fas.harvard.edu]:29500 (errno: 97 - Address family not supported by protocol).
+[W307 21:52:50.344307428 socket.cpp:752] [c10d] The client socket cannot be initialized to connect to [holygpu8a11201.rc.fas.harvard.edu]:29500 (errno: 97 - Address family not supported by protocol).
+[W307 21:52:55.425554054 socket.cpp:752] [c10d] The client socket cannot be initialized to connect to [holygpu8a11201.rc.fas.harvard.edu]:29500 (errno: 97 - Address family not supported by protocol).
+[W307 21:52:55.425589266 socket.cpp:752] [c10d] The client socket cannot be initialized to connect to [holygpu8a11201.rc.fas.harvard.edu]:29500 (errno: 97 - Address family not supported by protocol).
+[W307 21:52:55.425645797 socket.cpp:752] [c10d] The client socket cannot be initialized to connect to [holygpu8a11201.rc.fas.harvard.edu]:29500 (errno: 97 - Address family not supported by protocol).
+[W307 21:52:55.425645677 socket.cpp:752] [c10d] The client socket cannot be initialized to connect to [holygpu8a11201.rc.fas.harvard.edu]:29500 (errno: 97 - Address family not supported by protocol).

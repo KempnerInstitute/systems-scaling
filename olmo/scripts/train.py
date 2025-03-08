@@ -338,7 +338,7 @@ if __name__ == "__main__":
         print(f"failed to set multiprocessing start method: {e}")
 
     # Initialize process group.
-    dist.init_process_group(backend="nccl", )
+    dist.init_process_group(backend="nccl")
 
     prepare_cli_environment()
 

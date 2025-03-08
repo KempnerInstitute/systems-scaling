@@ -112,6 +112,7 @@ def fit(N, D, L, alpha=None, beta=None, E=None, A=None, B=None, kaplan=False):
             "r_squared": r_squared.flatten(),
         }
     )
+
     opt_df = sol_df.iloc[sol_df["loss"].idxmin()]
     return opt_df, sol_df
 

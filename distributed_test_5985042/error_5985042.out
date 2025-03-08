@@ -1,0 +1,39 @@
+
+EnvironmentNameNotFound: Could not find conda environment: sys
+You can list all discoverable environments with `conda info --envs`.
+
+
+Traceback (most recent call last):
+  File "/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/test_nodes.py", line 1, in <module>
+Traceback (most recent call last):
+  File "/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/test_nodes.py", line 1, in <module>
+Traceback (most recent call last):
+  File "/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/test_nodes.py", line 1, in <module>
+Traceback (most recent call last):
+  File "/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/test_nodes.py", line 1, in <module>
+    import torch
+ModuleNotFoundError: No module named 'torch'
+    import torch
+ModuleNotFoundError: No module named 'torch'
+    import torch
+    import torch
+ModuleNotFoundError: No module named 'torch'
+ModuleNotFoundError: No module named 'torch'
+Traceback (most recent call last):
+  File "/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/test_nodes.py", line 1, in <module>
+Traceback (most recent call last):
+  File "/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/test_nodes.py", line 1, in <module>
+Traceback (most recent call last):
+  File "/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/test_nodes.py", line 1, in <module>
+    import torch
+ModuleNotFoundError: No module named 'torch'
+    import torch
+ModuleNotFoundError: No module named 'torch'
+Traceback (most recent call last):
+  File "/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/test_nodes.py", line 1, in <module>
+    import torch
+ModuleNotFoundError: No module named 'torch'
+    import torch
+ModuleNotFoundError: No module named 'torch'
+srun: error: holygpu8a13204: tasks 4-7: Exited with exit code 1
+srun: error: holygpu8a11201: tasks 0-3: Exited with exit code 1

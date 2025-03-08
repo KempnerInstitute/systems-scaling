@@ -1512,10 +1512,10 @@ class OLMo(nn.Module):
         # each MAC has 2 FLOPs - we multiply by 2 ie 2 * n_param
         # this gets us FLOPs / token
         params_flops_per_token = 2 * n_params
-        params_flops_per_seq = params_flops_per_token * self.config.max_sequence_length
+        params_flops_per_seq = params_flops_per_token * self.config.context_length
         # there are 2 FLOPS per mac; there is A=Q*K^T and out=A*V ops (ie mult by 2)
         attn_flops_per_seq = (
-            self.config.n_layers * 2 * 2 * (self.config.d_model * (self.config.max_sequence_length**2))
+            self.config.n_layers * 2 * 2 * (self.config.d_model * (self.config.context_length**2))
         )
         self.__num_fwd_flops = params_flops_per_seq + attn_flops_per_seq
         return self.__num_fwd_flops

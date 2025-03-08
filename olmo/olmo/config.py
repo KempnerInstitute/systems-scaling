@@ -816,6 +816,16 @@ class TrainConfig(BaseConfig):
     Optional flops flag to make isoflop plotting easier
     """
 
+    params: Optional[float] = None
+    """
+    Optional params flag to make isoflop plotting easier
+    """
+
+    tokens: Optional[float] = None
+    """
+    Optional tokens flag to make isoflop plotting easier
+    """
+
     datatrove_dataset: bool = False
     """
     If true, we use the datatrove dataset format
