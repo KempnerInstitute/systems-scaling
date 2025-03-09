@@ -178,130 +178,130 @@ evaluators:
 
 
 
-#   ##########################
-#   # Train #
-#   ##########################
+  ##########################
+  # Train #
+  ##########################
   
-#   # - label: piqa_train
-#   #   type: downstream
+  # - label: piqa_train
+  #   type: downstream
 
-#   # - label: openbook_qa_train
-#   #   type: downstream
+  # - label: openbook_qa_train
+  #   type: downstream
 
-#   # - label: hellaswag_train
-#   #   type: downstream
+  # - label: hellaswag_train
+  #   type: downstream
 
-#   # - label: winogrande_train
-#   #   type: downstream
+  # - label: winogrande_train
+  #   type: downstream
   
-#   # - label: arc_easy_train
-#   #   type: downstream
+  # - label: arc_easy_train
+  #   type: downstream
   
-#   # - label: arc_challenge_train
-#   #   type: downstream
+  # - label: arc_challenge_train
+  #   type: downstream
   
-#   # - label: boolq_train
-#   #   type: downstream
+  # - label: boolq_train
+  #   type: downstream
 
-#   # - label: sciq_train
-#   #   type: downstream
+  # - label: sciq_train
+  #   type: downstream
 
 
 #   ##########################
 #   # Downstream evaluations from OLMO #
 #   ##########################
 
-#   - label: piqa_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
+  - label: piqa_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
 
-#   - label: openbook_qa_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
+  - label: openbook_qa_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
 
-#   - label: hellaswag_test     
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
+  - label: hellaswag_test     
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
 
-#   - label: winogrande_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
+  - label: winogrande_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
 
-#   - label: arc_easy_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
+  - label: arc_easy_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
 
-#   - label: arc_challenge_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
+  - label: arc_challenge_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
 
-#   - label: boolq_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
+  - label: boolq_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
 
-#   - label: sciq_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
+  - label: sciq_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
   
 #  ##########################
 #   # Soft Downstream evaluations from OLMO #
 #   ##########################
 
-#   - label: piqa_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ce_wrapper: true
+  - label: piqa_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ce_wrapper: true
 
-#   - label: openbook_qa_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ce_wrapper: true
+  - label: openbook_qa_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ce_wrapper: true
 
-#   - label: hellaswag_test     
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ce_wrapper: true
+  - label: hellaswag_test     
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ce_wrapper: true
 
-#   - label: winogrande_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ce_wrapper: true
+  - label: winogrande_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ce_wrapper: true
 
-#   - label: arc_easy_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ce_wrapper: true
+  - label: arc_easy_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ce_wrapper: true
 
-#   - label: arc_challenge_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ce_wrapper: true
+  - label: arc_challenge_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ce_wrapper: true
 
-#   - label: boolq_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ce_wrapper: true
+  - label: boolq_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ce_wrapper: true
 
-#   - label: sciq_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ce_wrapper: true
+  - label: sciq_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ce_wrapper: true
 
 
-#   - label: piqa_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ctx_ce_wrapper: true
+  - label: piqa_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ctx_ce_wrapper: true
 
-#   - label: openbook_qa_test
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ctx_ce_wrapper: true
+  - label: openbook_qa_test
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ctx_ce_wrapper: true
 
-#   - label: hellaswag_test     
-#     type: downstream
-#     subset_num_batches: 1000 # do not subset here
-#     ctx_ce_wrapper: true
+  - label: hellaswag_test     
+    type: downstream
+    subset_num_batches: 1000 # do not subset here
+    ctx_ce_wrapper: true
 
 #   # Some sort of bug?
 #   # - label: winogrande_test

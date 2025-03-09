@@ -72,16 +72,18 @@ D = df_big["tokens"]
 extrap_preds = []
 extrap_losses = []
 for i, row in opt_params_df.iterrows():
-    data_idx = data.index(row["data"])
-    n = np.array(N[data_idx], dtype=np.float64)
-    d = np.array(D[data_idx], dtype=np.float64)
+    # data_idx = data.index(row["data"])
+    format_idx = data.index(row["data"])
+
+    n = np.array(N[format_idx], dtype=np.float64)
+    d = np.array(D[format_idx], dtype=np.float64)
     A, B, E, alpha, beta = get_params(row)
     params = np.array([np.log(A), np.log(B), np.log(E), alpha, beta])
     if row["kaplan"]:
         extrap_preds.append(kaplan_curve(params, n, d, np.ones(5), np.zeros(5)))
     else:
         extrap_preds.append(chinchilla_curve(params, n, d, np.ones(5), np.zeros(5)))
-    extrap_losses.append(df_big[row["loss_name"]][data_idx])
+    extrap_losses.append(df_big[row["loss_name"]][format_idx])
     print(f"Data = {row['data']}, Loss = {row['loss_name']}, Prediction = {extrap_preds[-1]}, Actual = {extrap_losses[-1]}")
 
 opt_params_df["extrap_pred"] = extrap_preds

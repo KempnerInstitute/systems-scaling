@@ -34,7 +34,7 @@ Getting started
     from olmo.eval.downstream import *
     tokenizer = Tokenizer.from_file("olmo/tokenizers/allenai_eleuther-ai-gpt-neox-20b-pii-special.json")
     for x in label_to_task_map.values():
-    print(x)
+        print(x)
         kwargs = {}
         if isinstance(x, tuple):
             x, kwargs = x
