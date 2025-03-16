@@ -7,9 +7,9 @@
 #SBATCH --cpus-per-task=24
 #SBATCH --time=71:30:00
 #SBATCH --mem=0		
-#SBATCH --account=kempner_grads
+#SBATCH --account=kempner_dev
 #SBATCH --partition=kempner_h100_priority
-#SBATCH --mail-user=csu@g.harvard.edu
+#SBATCH --mail-user=nikhil_anand@harvard.edu
 #SBATCH --mail-type=END
 #SBATCH --array=1
 #SBATCH --exclude=holygpu8a15401
@@ -21,7 +21,7 @@ sleep $((RANDOM % 240))
 # Custom environment
 source ~/.bashrc
 mamba deactivate
-mamba activate sys
+mamba activate tmrc_dev02
 
 # sleep $(( SLURM_ARRAY_TASK_ID * 60 ))
 module load cuda/12.4.1-fasrc01
@@ -43,7 +43,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts"
+export CHECKPOINTS_PATH="/n/holylfs06/LABS/kempner_dev/Lab/nikhilanand/systems-scaling/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
