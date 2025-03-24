@@ -22,15 +22,19 @@ sweep_config = {
     "data": {
         "paths": train_sets,
     },
-    "global_train_batch_size": 1024,
+    "global_train_batch_size": 512,
 }
 
 
 iso_flops = [int(n) for n in np.geomspace(2e17, 1e19, 6)] + [int(2.2e19), int(4.84e19), int(1e21)]
 
 model_sizes = [
+    (128, 3),
+    (192, 3),
     (256, 4),
+    (320, 4),
     (320, 5),
+    (384, 5),
     (384, 6),
     (448, 7),  # 50M
     (512, 8),
@@ -76,10 +80,10 @@ model_defaults = {
     "attention_dropout": 0.0,
     "residual_dropout": 0.0,
     "embedding_dropout": 0.0,
-    "vocab_size": 32000,
-    "embedding_size": 32000,
-    "eos_token_id": 2,
-    "pad_token_id": 2,
+    "vocab_size": 128256,
+    "embedding_size": 128256,
+    "eos_token_id": 1,
+    "pad_token_id": 0,
     "init_device": "meta",
     "init_fn": "mitchell",
     "weight_tying": False,
@@ -108,14 +112,14 @@ def get_model_config_and_size(d_model, n_layers):
     seq_len = model_defaults["context_length"]
     activation_memory = 2 * (n_layers + 1) * (seq_len * d_model) * (4 + 4 + 2)  # Attention + ff hidden + norm
     attention_memory = 2 * n_layers * seq_len**2 * d_model // head_size
-    output_memory = 2 * 4 * seq_len * 32000  # vocab size
+    output_memory = 2 * 4 * seq_len * 128256  # vocab size
     model_memory = 3 * 4 * params
     # Using 75 GB to allow for fudge factor
     bs = int((70e9 - model_memory) / (activation_memory + attention_memory + output_memory))
     bs = min(2 ** int(np.log2(bs)), 128)  # Otherwise small models fo OOM
     # bs = 2 ** int(np.log2(bs))
     print(f"Computed batch size: {bs}")
-    print(f"Memory: {(model_memory + bs * (activation_memory+attention_memory+output_memory)) / 1e9} GB")
+    print(f"Memory: {(model_memory + bs * (activation_memory + attention_memory + output_memory)) / 1e9} GB")
     print(
         f"Breakdown: {model_memory / 1e9} GB, {bs * activation_memory / 1e9} GB, {bs * attention_memory / 1e9} GB, {bs * output_memory / 1e9} GB"
     )
@@ -157,9 +161,10 @@ def expand_config(
     config["total_flops"] = total_flops
     config["max_duration"] = steps
     config["scheduler"] = {"t_warmup": steps // 5}
-    config["eval_interval"] = steps // 5
+    config["eval_interval"] = steps // 10
     config["params"] = params
     config["tokens"] = tokens
+    config["ratio"] = tokens / params
     
     print(f"FLOPs: {float(flops)}, tokens: {tokens}, steps: {steps}")
     return config, tokens, steps

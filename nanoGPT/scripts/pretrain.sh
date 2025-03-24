@@ -2,7 +2,7 @@
 #SBATCH --account=kempner_grads
 #SBATCH --nodes=1
 #SBATCH -n 1 # Number of cores
-#SBATCH -p kempner_h100
+#SBATCH -p kempner_h100_priority
 #SBATCH -t 2-23:00
 #SBATCH --job-name=pretrain_gpt
 #SBATCH --output=log/output-%j.log

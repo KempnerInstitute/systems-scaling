@@ -77,6 +77,7 @@ class Tokenizer:
                 pad_token_id=config.model.pad_token_id,
             )
         if config.model.vocab_size != tokenizer.vocab_size:
+            print(config.model.vocab_size, tokenizer, tokenizer.vocab_size)
             raise OLMoConfigurationError("vocab size mismatch between config and tokenizer")
         return tokenizer
 

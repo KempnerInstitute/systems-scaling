@@ -818,12 +818,17 @@ class TrainConfig(BaseConfig):
 
     params: Optional[float] = None
     """
-    Optional params flag to make isoflop plotting easier
+    Optional params flag to make  plotting easier
     """
 
     tokens: Optional[float] = None
     """
-    Optional tokens flag to make isoflop plotting easier
+    Optional tokens flag to make  plotting easier
+    """
+
+    ratio: Optional[float] = None
+    """
+    Optional tokens flag to make  plotting easier
     """
 
     datatrove_dataset: bool = False

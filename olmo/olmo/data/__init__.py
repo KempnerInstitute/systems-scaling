@@ -24,7 +24,8 @@ from transformers import AutoTokenizer
 
 import torch
 from copy import deepcopy
-
+import re
+import random
 
 __all__ = [
     "MemMapDataset",
@@ -65,11 +66,26 @@ def build_memmap_dataset(
             if len(paths) == 0:
                 raise OLMoConfigurationError(f"no data found at {path}")
         
-        # Custom logic for RedPajama
+        # Custom logic
+        # if mode == 'val':
+        #     # paths = [p for p in paths if p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin'))]
+        #     paths = [p for p in paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) > 371]
+        # else:
+        #     # paths = [p for p in paths if not p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin'))]
+        #     paths = [p for p in paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) < 371]
+
+        random.seed(42)  # Set seed for reproducibility
+
+        bin_files = [(p, int(re.search(r'(\d+)\.bin$', p.name).group(1))) for p in paths]
+        random.shuffle(bin_files)
+        split_idx = int(len(bin_files) * 0.8)
+        train_files = bin_files[:split_idx]
+        val_files = bin_files[split_idx:]
+
         if mode == 'val':
-            paths = [p for p in paths if p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin'))]
+            paths = [p[0] for p in val_files]
         else:
-            paths = [p for p in paths if not p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin'))]
+            paths = [p[0] for p in train_files]
         
         for path in paths:
             metadata.append({"path": str(path)})
@@ -90,10 +106,25 @@ def build_memmap_dataset(
             
             # Custom logic for RedPajama
             if mode == 'val':
-                label_paths = [p for p in label_paths if p.suffix == '.bin' and p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin'))]
+                # label_paths = [p for p in label_paths if p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin'))]
+                label_paths = [p for p in label_paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) > 371]
             else:
-                label_paths = [p for p in label_paths if not (p.suffix == '.bin' and p.name.endswith(('28.bin', '29.bin', '30.bin', '31.bin', '32.bin', '33.bin')))]
-            
+                # label_paths = [p for p in label_paths if not (p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin')))]
+                label_paths = [p for p in label_paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) < 371]
+
+            random.seed(42)  # Set seed for reproducibility
+
+            bin_files = [(p, int(re.search(r'(\d+)\.bin$', p.name).group(1))) for p in paths]
+            random.shuffle(bin_files)
+            split_idx = int(len(bin_files) * 0.8)
+            train_files = bin_files[:split_idx]
+            val_files = bin_files[split_idx:]
+
+            if mode == 'val':
+                paths = [p[0] for p in val_files]
+            else:
+                paths = [p[0] for p in train_files]
+
             paths.extend(label_paths)
             metadata.extend([{"label": label}] * len(label_paths))
     else:
@@ -232,10 +263,9 @@ def build_train_dataloader(train_config: TrainConfig, world_size: Optional[int] 
         )
 
     
-    # print(   dataset)
     print(train_config.device_train_batch_size, train_config.datasets.drop_last, 'num_workers', train_config.datasets.num_workers,
           train_config.datasets.pin_memory, train_config.datasets.num_workers, train_config.datasets.prefetch_factor)
-    print('building data loader') 
+
     dataloader = DataLoader(
         dataset,
         batch_size=train_config.device_train_batch_size,
@@ -247,7 +277,6 @@ def build_train_dataloader(train_config: TrainConfig, world_size: Optional[int] 
         persistent_workers=False if train_config.datasets.num_workers == 0 else train_config.datasets.persistent_workers,
         timeout=train_config.datasets.timeout,
     )
-    print('built data loader') 
     return dataloader
 
 

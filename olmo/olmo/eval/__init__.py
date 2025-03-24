@@ -115,6 +115,7 @@ def build_evaluator(
 
 def build_evaluators(cfg: TrainConfig, device: torch.device) -> List[Evaluator]:
     evaluators = []
+    tokenizer = Tokenizer.from_train_config(cfg)
     try:
         tokenizer = Tokenizer.from_train_config(cfg)
     except:

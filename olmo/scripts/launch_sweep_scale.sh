@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=test-olmo-run
 #SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/olmo/logs/%A_%a.log
-#SBATCH --nodes=4           
+#SBATCH --nodes=4         
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4    
 #SBATCH --cpus-per-task=24
@@ -11,8 +11,7 @@
 #SBATCH --partition=kempner_h100_priority
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
-#SBATCH --array=1
-#SBATCH --exclude=holygpu8a15401
+#SBATCH --array=2-16
 #SBATCH --exclusive
 
 sleep $((RANDOM % 240))

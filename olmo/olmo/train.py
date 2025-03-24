@@ -111,7 +111,7 @@ def cross_entropy_loss(
     elif reduction == "sum":
         z_squared = (z_squared * (labels != ignore_index)).sum()
 
-    z_loss = 1e-4 * z_squared
+    z_loss = 1e-5 * z_squared
 
     return loss, z_loss
 

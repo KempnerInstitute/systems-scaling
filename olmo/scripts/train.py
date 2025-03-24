@@ -23,7 +23,8 @@ from olmo.data import (
 )
 from olmo.eval import build_evaluators
 from olmo.exceptions import OLMoCliError, OLMoConfigurationError
-from olmo.model import OLMo
+# from olmo.model import OLMo
+from olmo.model_original import OLMo
 from olmo.optim import BoltOnWarmupScheduler, build_optimizer, build_scheduler
 from olmo.torch_util import (
     barrier,
@@ -39,7 +40,7 @@ from olmo.train import Trainer
 from olmo.util import clean_opt, log_extra_field, prepare_cli_environment
 from olmo.registry import MODEL_DICT, INDEX_DICT
 
-from mx import finalize_mx_specs, mx_mapping
+# from mx import finalize_mx_specs, mx_mapping
 
 log = logging.getLogger("train")
 
@@ -47,19 +48,20 @@ log = logging.getLogger("train")
 def build_models(cfg: TrainConfig):
     # Initialize the model.
     log.info("Building model...")
-    # MXFP8_e5m2 matmuls with bfloat16 vector ops, forward pass only
-    mx_specs = {
-            'scale_bits': 8,
-            'w_elem_format': cfg.model.w_mx_format,
-            'a_elem_format': cfg.model.a_mx_format,
-            'block_size': 32,
-            'bfloat': 16,
-            'custom_cuda': True,
-            # For quantization-aware finetuning, do backward pass in FP32
-            'quantize_backprop': True,
-        }
-    mx_specs = finalize_mx_specs(mx_specs)
-    mx_mapping.inject_pyt_ops(mx_specs)
+
+    # MXFP8_e5m2 matmuls with bfloat16 vector ops
+    # mx_specs = {
+    #         'scale_bits': 8,
+    #         'w_elem_format': cfg.model.w_mx_format,
+    #         'a_elem_format': cfg.model.a_mx_format,
+    #         'block_size': 32,
+    #         'bfloat': 16,
+    #         'custom_cuda': True,
+    #         # For quantization-aware finetuning, do backward pass in FP32
+    #         'quantize_backprop': True,
+    #     }
+    # mx_specs = finalize_mx_specs(mx_specs)
+    # mx_mapping.inject_pyt_ops(mx_specs)
 
     olmo_model = OLMo(cfg.model)
     log.info(f"Total number of parameters: {olmo_model.num_params():,d}")

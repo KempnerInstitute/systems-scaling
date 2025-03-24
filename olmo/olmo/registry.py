@@ -11,6 +11,7 @@ DATA_DICT = {
     "c4": f"{data_path}/c4-tokenized-llama",
     "c4-val": f"{data_path}/c4-val-tokenized-llama",
     "redpajama-val": f"/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv",
+    "fineweb": "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default",
     "starcoder": f"{data_path}/dolma-starcoder-tokenized-llama",
     "starcoder-val": f"{data_path}/dolma-starcoder-val-tokenized-llama",
     "proof-pile-2": f"{data_path}/proof-pile-2",

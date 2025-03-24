@@ -646,11 +646,16 @@ def get_param_groups(cfg: TrainConfig, model: nn.Module) -> List[Dict[str, Any]]
                     decay.add(fpn)
                 else:
                     no_decay.add(fpn)
+            elif pn.endswith("norm.weight") or pn.endswith("ln_f.weight"):
+                no_decay.add(fpn)
 
     # Validate that we've considered every parameter
     inter_params = decay & no_decay
     union_params = decay | no_decay
     assert len(inter_params) == 0, f"parameters {inter_params} made it into both decay/no_decay sets!"
+
+    for param in all_params.keys() - union_params:
+        print(all_params[param].__class__)
     assert (
         len(all_params.keys() - union_params) == 0
     ), f"parameters {all_params.keys() - union_params} were not separated into either decay/no_decay set!"
