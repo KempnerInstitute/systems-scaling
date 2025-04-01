@@ -23,7 +23,7 @@ class LayerNormFunction(torch.autograd.Function):
 
         x = vec_quantize(x, mx_specs=mx_specs)
         bf_weight = vec_quantize(weight, mx_specs=mx_specs)
-        bf_bias = vec_quantize(bias, mx_specs=mx_specs)
+        bf_bias = vec_quantize(bias, mx_specs=mx_specs) if bias is not None else bias
 
         output, _, x_norm, _, _, x_vare = \
                 _norm_forward(
@@ -62,7 +62,7 @@ class LayerNormFunction(torch.autograd.Function):
                 grad_output, -1, weight, x_norm,
                 x_vare, ctx.mx_specs)
 
-        return (grad_input, grad_weight, grad_bias, None, None, None)
+        return (grad_input, grad_weight, None, None, None, None) # grad_bias
 
 
 class LayerNorm(torch.nn.LayerNorm):

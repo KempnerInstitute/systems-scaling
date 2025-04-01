@@ -1,11 +1,4 @@
-# data:
-#   paths:
-#   - fineweb-100b
-#   - starcoder
-#   - proof-pile-2
-#   - fineweb-edu-100b
-#   - slimpajama-chunk1
-#   - smollm-corpus
+
 # global_train_batch_size: 512
 training:
   batch_size: 512 # global_train_batch_size
@@ -14,36 +7,6 @@ save_interval_unsharded: 100000
 save_num_checkpoints_to_keep: 1
 save_num_unsharded_checkpoints_to_keep: 1
 sweep:
-- device_eval_batch_size: 64
-  device_train_microbatch_size: 128
-  eval_interval: 380
-  max_duration: 3803
-  model:
-    context_length: 512
-    d_model: 128
-    n_heads: 2
-    n_layers: 3
-  params: 33427456
-  ratio: 29.823796103418697
-  scheduler:
-    t_warmup: 760
-  tokens: 996933632
-  total_flops: 200000000000000000
-- device_eval_batch_size: 64
-  device_train_microbatch_size: 128
-  eval_interval: 251
-  max_duration: 2513
-  model:
-    context_length: 512
-    d_model: 192
-    n_heads: 3
-    n_layers: 3
-  params: 50583552
-  ratio: 13.023361269687031
-  scheduler:
-    t_warmup: 502
-  tokens: 658767872
-  total_flops: 200000000000000000
 - device_eval_batch_size: 64
   device_train_microbatch_size: 64
   eval_interval: 184

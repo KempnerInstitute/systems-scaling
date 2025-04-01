@@ -29,12 +29,8 @@ sweep_config = {
 iso_flops = [int(n) for n in np.geomspace(2e17, 1e19, 6)] + [int(2.2e19), int(4.84e19), int(1e21)]
 
 model_sizes = [
-    (128, 3),
-    (192, 3),
     (256, 4),
-    (320, 4),
     (320, 5),
-    (384, 5),
     (384, 6),
     (448, 7),  # 50M
     (512, 8),
@@ -63,6 +59,8 @@ model_sizes = [
     (2560, 40),  # 3.3B
 ]
 
+vocab_size = 32000
+
 
 model_defaults = {
     "context_length": 512,
@@ -80,8 +78,8 @@ model_defaults = {
     "attention_dropout": 0.0,
     "residual_dropout": 0.0,
     "embedding_dropout": 0.0,
-    "vocab_size": 128256,
-    "embedding_size": 128256,
+    "vocab_size": vocab_size,
+    "embedding_size": vocab_size, 
     "eos_token_id": 1,
     "pad_token_id": 0,
     "init_device": "meta",
@@ -112,7 +110,7 @@ def get_model_config_and_size(d_model, n_layers):
     seq_len = model_defaults["context_length"]
     activation_memory = 2 * (n_layers + 1) * (seq_len * d_model) * (4 + 4 + 2)  # Attention + ff hidden + norm
     attention_memory = 2 * n_layers * seq_len**2 * d_model // head_size
-    output_memory = 2 * 4 * seq_len * 128256  # vocab size
+    output_memory = 2 * 4 * seq_len * vocab_size  # vocab size
     model_memory = 3 * 4 * params
     # Using 75 GB to allow for fudge factor
     bs = int((70e9 - model_memory) / (activation_memory + attention_memory + output_memory))

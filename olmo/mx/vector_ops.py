@@ -44,6 +44,12 @@ def vec_quantize(input, mx_specs=None, round=None):
 # Vec regular ops
 #-------------------------------------------------------------------------
 def vec_add(a, b, mx_specs=None, round=None):
+    if b is None:
+        return quantize_elemwise_op(a, mx_specs=mx_specs,
+                                round=round)
+    if a is None:
+        return quantize_elemwise_op(b, mx_specs=mx_specs,
+                                round=round)
     return quantize_elemwise_op(a + b, mx_specs=mx_specs,
                                 round=round)
 

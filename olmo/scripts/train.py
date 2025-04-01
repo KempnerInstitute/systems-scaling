@@ -23,8 +23,7 @@ from olmo.data import (
 )
 from olmo.eval import build_evaluators
 from olmo.exceptions import OLMoCliError, OLMoConfigurationError
-# from olmo.model import OLMo
-from olmo.model_original import OLMo
+from olmo.model import OLMo
 from olmo.optim import BoltOnWarmupScheduler, build_optimizer, build_scheduler
 from olmo.torch_util import (
     barrier,

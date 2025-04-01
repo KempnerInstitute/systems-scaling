@@ -67,13 +67,6 @@ def build_memmap_dataset(
                 raise OLMoConfigurationError(f"no data found at {path}")
         
         # Custom logic
-        # if mode == 'val':
-        #     # paths = [p for p in paths if p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin'))]
-        #     paths = [p for p in paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) > 371]
-        # else:
-        #     # paths = [p for p in paths if not p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin'))]
-        #     paths = [p for p in paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) < 371]
-
         random.seed(42)  # Set seed for reproducibility
 
         bin_files = [(p, int(re.search(r'(\d+)\.bin$', p.name).group(1))) for p in paths]
