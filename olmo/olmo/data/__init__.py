@@ -98,25 +98,25 @@ def build_memmap_dataset(
                     raise OLMoConfigurationError(f"no data found at {path}")
             
             # Custom logic for RedPajama
-            if mode == 'val':
-                # label_paths = [p for p in label_paths if p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin'))]
-                label_paths = [p for p in label_paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) > 371]
-            else:
-                # label_paths = [p for p in label_paths if not (p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin')))]
-                label_paths = [p for p in label_paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) < 371]
+            # if mode == 'val':
+            #     # label_paths = [p for p in label_paths if p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin'))]
+            #     label_paths = [p for p in label_paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) > 371]
+            # else:
+            #     # label_paths = [p for p in label_paths if not (p.name.endswith(('_27.bin', '_28.bin', '_29.bin', '_30.bin', '_31.bin', '_32.bin', '_33.bin')))]
+            #     label_paths = [p for p in label_paths if int(re.search(r'(\d+)\.bin$', p.name).group(1)) < 371]
 
             random.seed(42)  # Set seed for reproducibility
 
-            bin_files = [(p, int(re.search(r'(\d+)\.bin$', p.name).group(1))) for p in paths]
+            bin_files = [(p, int(re.search(r'(\d+)\.bin$', p.name).group(1))) for p in label_paths]
             random.shuffle(bin_files)
             split_idx = int(len(bin_files) * 0.8)
             train_files = bin_files[:split_idx]
             val_files = bin_files[split_idx:]
 
             if mode == 'val':
-                paths = [p[0] for p in val_files]
+                label_paths = [p[0] for p in val_files]
             else:
-                paths = [p[0] for p in train_files]
+                label_paths = [p[0] for p in train_files]
 
             paths.extend(label_paths)
             metadata.extend([{"label": label}] * len(label_paths))

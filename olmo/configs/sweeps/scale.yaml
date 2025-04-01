@@ -1,0 +1,1456 @@
+data:
+  paths:
+  - fineweb-100b
+  - starcoder
+  - proof-pile-2
+  - fineweb-edu-100b
+  - slimpajama-chunk1
+  - smollm-corpus
+global_train_batch_size: 512
+save_interval: 1000
+save_interval_unsharded: 100000
+save_num_checkpoints_to_keep: 1
+save_num_unsharded_checkpoints_to_keep: 1
+sweep:
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 650
+  max_duration: 6509
+  model:
+    context_length: 512
+    d_model: 256
+    n_heads: 4
+    n_layers: 4
+  params: 19534080
+  ratio: 87.34966253849682
+  scheduler:
+    t_warmup: 1301
+  tokens: 1706295296
+  total_flops: 200000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 477
+  max_duration: 4774
+  model:
+    context_length: 512
+    d_model: 320
+    n_heads: 5
+    n_layers: 5
+  params: 26630720
+  ratio: 46.99367707669939
+  scheduler:
+    t_warmup: 954
+  tokens: 1251475456
+  total_flops: 200000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 361
+  max_duration: 3612
+  model:
+    context_length: 512
+    d_model: 384
+    n_heads: 6
+    n_layers: 6
+  params: 35202432
+  ratio: 26.897690705005836
+  scheduler:
+    t_warmup: 722
+  tokens: 946864128
+  total_flops: 200000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 279
+  max_duration: 2791
+  model:
+    context_length: 512
+    d_model: 448
+    n_heads: 7
+    n_layers: 7
+  params: 45544128
+  ratio: 16.064505703128184
+  scheduler:
+    t_warmup: 558
+  tokens: 731643904
+  total_flops: 200000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 219
+  max_duration: 2194
+  model:
+    context_length: 512
+    d_model: 512
+    n_heads: 8
+    n_layers: 8
+  params: 57950720
+  ratio: 9.924707337544728
+  scheduler:
+    t_warmup: 438
+  tokens: 575143936
+  total_flops: 200000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 174
+  max_duration: 1748
+  model:
+    context_length: 512
+    d_model: 576
+    n_heads: 9
+    n_layers: 9
+  params: 72717120
+  ratio: 6.301510730898033
+  scheduler:
+    t_warmup: 349
+  tokens: 458227712
+  total_flops: 200000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 141
+  max_duration: 1410
+  model:
+    context_length: 512
+    d_model: 640
+    n_heads: 10
+    n_layers: 10
+  params: 90138240
+  ratio: 4.1006241080367225
+  scheduler:
+    t_warmup: 282
+  tokens: 369623040
+  total_flops: 200000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 115
+  max_duration: 1150
+  model:
+    context_length: 512
+    d_model: 704
+    n_heads: 11
+    n_layers: 11
+  params: 110508992
+  ratio: 2.727973484727831
+  scheduler:
+    t_warmup: 230
+  tokens: 301465600
+  total_flops: 200000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1423
+  max_duration: 14234
+  model:
+    context_length: 512
+    d_model: 256
+    n_heads: 4
+    n_layers: 4
+  params: 19534080
+  ratio: 191.01783631478932
+  scheduler:
+    t_warmup: 2846
+  tokens: 3731357696
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1044
+  max_duration: 10441
+  model:
+    context_length: 512
+    d_model: 320
+    n_heads: 5
+    n_layers: 5
+  params: 26630720
+  ratio: 102.77775080808931
+  scheduler:
+    t_warmup: 2088
+  tokens: 2737045504
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 789
+  max_duration: 7898
+  model:
+    context_length: 512
+    d_model: 384
+    n_heads: 6
+    n_layers: 6
+  params: 35202432
+  ratio: 58.81449645297234
+  scheduler:
+    t_warmup: 1579
+  tokens: 2070413312
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 610
+  max_duration: 6105
+  model:
+    context_length: 512
+    d_model: 448
+    n_heads: 7
+    n_layers: 7
+  params: 45544128
+  ratio: 35.13930753048999
+  scheduler:
+    t_warmup: 1221
+  tokens: 1600389120
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 479
+  max_duration: 4798
+  model:
+    context_length: 512
+    d_model: 512
+    n_heads: 8
+    n_layers: 8
+  params: 57950720
+  ratio: 21.704077395414586
+  scheduler:
+    t_warmup: 959
+  tokens: 1257766912
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 382
+  max_duration: 3823
+  model:
+    context_length: 512
+    d_model: 576
+    n_heads: 9
+    n_layers: 9
+  params: 72717120
+  ratio: 13.781850986397702
+  scheduler:
+    t_warmup: 764
+  tokens: 1002176512
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 308
+  max_duration: 3084
+  model:
+    context_length: 512
+    d_model: 640
+    n_heads: 10
+    n_layers: 10
+  params: 90138240
+  ratio: 8.969024644812235
+  scheduler:
+    t_warmup: 616
+  tokens: 808452096
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 251
+  max_duration: 2516
+  model:
+    context_length: 512
+    d_model: 704
+    n_heads: 11
+    n_layers: 11
+  params: 110508992
+  ratio: 5.968331554413237
+  scheduler:
+    t_warmup: 503
+  tokens: 659554304
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 207
+  max_duration: 2073
+  model:
+    context_length: 512
+    d_model: 768
+    n_heads: 12
+    n_layers: 12
+  params: 134124288
+  ratio: 4.051648810989401
+  scheduler:
+    t_warmup: 414
+  tokens: 543424512
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 172
+  max_duration: 1724
+  model:
+    context_length: 512
+    d_model: 832
+    n_heads: 13
+    n_layers: 13
+  params: 161279040
+  ratio: 2.8022008067508337
+  scheduler:
+    t_warmup: 344
+  tokens: 451936256
+  total_flops: 437344829577312000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1727
+  max_duration: 17272
+  model:
+    context_length: 512
+    d_model: 384
+    n_heads: 6
+    n_layers: 6
+  params: 35202432
+  ratio: 128.6204080445351
+  scheduler:
+    t_warmup: 3454
+  tokens: 4527751168
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1335
+  max_duration: 13350
+  model:
+    context_length: 512
+    d_model: 448
+    n_heads: 7
+    n_layers: 7
+  params: 45544128
+  ratio: 76.84025479640317
+  scheduler:
+    t_warmup: 2670
+  tokens: 3499622400
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1049
+  max_duration: 10492
+  model:
+    context_length: 512
+    d_model: 512
+    n_heads: 8
+    n_layers: 8
+  params: 57950720
+  ratio: 47.46127136988117
+  scheduler:
+    t_warmup: 2098
+  tokens: 2750414848
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 836
+  max_duration: 8361
+  model:
+    context_length: 512
+    d_model: 576
+    n_heads: 9
+    n_layers: 9
+  params: 72717120
+  ratio: 30.141265000594082
+  scheduler:
+    t_warmup: 1672
+  tokens: 2191785984
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 674
+  max_duration: 6745
+  model:
+    context_length: 512
+    d_model: 640
+    n_heads: 10
+    n_layers: 10
+  params: 90138240
+  ratio: 19.616106105466447
+  scheduler:
+    t_warmup: 1349
+  tokens: 1768161280
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 550
+  max_duration: 5502
+  model:
+    context_length: 512
+    d_model: 704
+    n_heads: 11
+    n_layers: 11
+  params: 110508992
+  ratio: 13.051574011280458
+  scheduler:
+    t_warmup: 1100
+  tokens: 1442316288
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 453
+  max_duration: 4533
+  model:
+    context_length: 512
+    d_model: 768
+    n_heads: 12
+    n_layers: 12
+  params: 134124288
+  ratio: 8.859683579457286
+  scheduler:
+    t_warmup: 906
+  tokens: 1188298752
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 377
+  max_duration: 3770
+  model:
+    context_length: 512
+    d_model: 832
+    n_heads: 13
+    n_layers: 13
+  params: 161279040
+  ratio: 6.127782506641904
+  scheduler:
+    t_warmup: 754
+  tokens: 988282880
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 316
+  max_duration: 3162
+  model:
+    context_length: 512
+    d_model: 896
+    n_heads: 14
+    n_layers: 14
+  params: 192268160
+  ratio: 4.311162742702692
+  scheduler:
+    t_warmup: 632
+  tokens: 828899328
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 267
+  max_duration: 2674
+  model:
+    context_length: 512
+    d_model: 960
+    n_heads: 15
+    n_layers: 15
+  params: 227386560
+  ratio: 3.08273741420777
+  scheduler:
+    t_warmup: 534
+  tokens: 700973056
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 227
+  max_duration: 2277
+  model:
+    context_length: 512
+    d_model: 1024
+    n_heads: 16
+    n_layers: 16
+  params: 266929152
+  ratio: 2.2361809623551347
+  scheduler:
+    t_warmup: 455
+  tokens: 596901888
+  total_flops: 956352499790040192
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 2919
+  max_duration: 29193
+  model:
+    context_length: 512
+    d_model: 448
+    n_heads: 7
+    n_layers: 7
+  params: 45544128
+  ratio: 168.0297796457976
+  scheduler:
+    t_warmup: 5838
+  tokens: 7652769792
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 2294
+  max_duration: 22943
+  model:
+    context_length: 512
+    d_model: 512
+    n_heads: 8
+    n_layers: 8
+  params: 57950720
+  ratio: 103.78421168882802
+  scheduler:
+    t_warmup: 4588
+  tokens: 6014369792
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1828
+  max_duration: 18284
+  model:
+    context_length: 512
+    d_model: 576
+    n_heads: 9
+    n_layers: 9
+  params: 72717120
+  ratio: 65.91351384653298
+  scheduler:
+    t_warmup: 3656
+  tokens: 4793040896
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1475
+  max_duration: 14750
+  model:
+    context_length: 512
+    d_model: 640
+    n_heads: 10
+    n_layers: 10
+  params: 90138240
+  ratio: 42.89659971173167
+  scheduler:
+    t_warmup: 2950
+  tokens: 3866624000
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1203
+  max_duration: 12031
+  model:
+    context_length: 512
+    d_model: 704
+    n_heads: 11
+    n_layers: 11
+  params: 110508992
+  ratio: 28.539346951965683
+  scheduler:
+    t_warmup: 2406
+  tokens: 3153854464
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 991
+  max_duration: 9913
+  model:
+    context_length: 512
+    d_model: 768
+    n_heads: 12
+    n_layers: 12
+  params: 134124288
+  ratio: 19.374816528382986
+  scheduler:
+    t_warmup: 1982
+  tokens: 2598633472
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 824
+  max_duration: 8244
+  model:
+    context_length: 512
+    d_model: 832
+    n_heads: 13
+    n_layers: 13
+  params: 161279040
+  ratio: 13.399851189590414
+  scheduler:
+    t_warmup: 1648
+  tokens: 2161115136
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 691
+  max_duration: 6915
+  model:
+    context_length: 512
+    d_model: 896
+    n_heads: 14
+    n_layers: 14
+  params: 192268160
+  ratio: 9.428112070142035
+  scheduler:
+    t_warmup: 1383
+  tokens: 1812725760
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 584
+  max_duration: 5847
+  model:
+    context_length: 512
+    d_model: 960
+    n_heads: 15
+    n_layers: 15
+  params: 227386560
+  ratio: 6.740750060161867
+  scheduler:
+    t_warmup: 1169
+  tokens: 1532755968
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 498
+  max_duration: 4981
+  model:
+    context_length: 512
+    d_model: 1024
+    n_heads: 16
+    n_layers: 16
+  params: 266929152
+  ratio: 4.891707234734706
+  scheduler:
+    t_warmup: 996
+  tokens: 1305739264
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 427
+  max_duration: 4272
+  model:
+    context_length: 512
+    d_model: 1088
+    n_heads: 17
+    n_layers: 17
+  params: 311190848
+  ratio: 3.5986892776486794
+  scheduler:
+    t_warmup: 854
+  tokens: 1119879168
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 368
+  max_duration: 3688
+  model:
+    context_length: 512
+    d_model: 1152
+    n_heads: 18
+    n_layers: 18
+  params: 360466560
+  ratio: 2.682043715788782
+  scheduler:
+    t_warmup: 737
+  tokens: 966787072
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 320
+  max_duration: 3203
+  model:
+    context_length: 512
+    d_model: 1216
+    n_heads: 19
+    n_layers: 19
+  params: 415051200
+  ratio: 2.0229967579903394
+  scheduler:
+    t_warmup: 640
+  tokens: 839647232
+  total_flops: 2091279105182539776
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 3998
+  max_duration: 39983
+  model:
+    context_length: 512
+    d_model: 576
+    n_heads: 9
+    n_layers: 9
+  params: 72717120
+  ratio: 144.13804551115336
+  scheduler:
+    t_warmup: 7996
+  tokens: 10481303552
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 3225
+  max_duration: 32255
+  model:
+    context_length: 512
+    d_model: 640
+    n_heads: 10
+    n_layers: 10
+  params: 90138240
+  ratio: 93.80541177640033
+  scheduler:
+    t_warmup: 6451
+  tokens: 8455454720
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 2630
+  max_duration: 26309
+  model:
+    context_length: 512
+    d_model: 704
+    n_heads: 11
+    n_layers: 11
+  params: 110508992
+  ratio: 62.40891687800392
+  scheduler:
+    t_warmup: 5261
+  tokens: 6896746496
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 2167
+  max_duration: 21677
+  model:
+    context_length: 512
+    d_model: 768
+    n_heads: 12
+    n_layers: 12
+  params: 134124288
+  ratio: 42.36738604718632
+  scheduler:
+    t_warmup: 4335
+  tokens: 5682495488
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1802
+  max_duration: 18027
+  model:
+    context_length: 512
+    d_model: 832
+    n_heads: 13
+    n_layers: 13
+  params: 161279040
+  ratio: 29.301202983351093
+  scheduler:
+    t_warmup: 3605
+  tokens: 4725669888
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1512
+  max_duration: 15121
+  model:
+    context_length: 512
+    d_model: 896
+    n_heads: 14
+    n_layers: 14
+  params: 192268160
+  ratio: 20.616411079192726
+  scheduler:
+    t_warmup: 3024
+  tokens: 3963879424
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1278
+  max_duration: 12786
+  model:
+    context_length: 512
+    d_model: 960
+    n_heads: 15
+    n_layers: 15
+  params: 227386560
+  ratio: 14.740419064345755
+  scheduler:
+    t_warmup: 2557
+  tokens: 3351773184
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 1089
+  max_duration: 10892
+  model:
+    context_length: 512
+    d_model: 1024
+    n_heads: 16
+    n_layers: 16
+  params: 266929152
+  ratio: 10.696742662262682
+  scheduler:
+    t_warmup: 2178
+  tokens: 2855272448
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 934
+  max_duration: 9343
+  model:
+    context_length: 512
+    d_model: 1088
+    n_heads: 17
+    n_layers: 17
+  params: 311190848
+  ratio: 7.870448015232119
+  scheduler:
+    t_warmup: 1868
+  tokens: 2449211392
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 806
+  max_duration: 8065
+  model:
+    context_length: 512
+    d_model: 1152
+    n_heads: 18
+    n_layers: 18
+  params: 360466560
+  ratio: 5.865152540085827
+  scheduler:
+    t_warmup: 1613
+  tokens: 2114191360
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 700
+  max_duration: 7005
+  model:
+    context_length: 512
+    d_model: 1216
+    n_heads: 19
+    n_layers: 19
+  params: 415051200
+  ratio: 4.424318541905191
+  scheduler:
+    t_warmup: 1401
+  tokens: 1836318720
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 611
+  max_duration: 6117
+  model:
+    context_length: 512
+    d_model: 1280
+    n_heads: 20
+    n_layers: 20
+  params: 475239680
+  ratio: 3.374160272138892
+  scheduler:
+    t_warmup: 1223
+  tokens: 1603534848
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 537
+  max_duration: 5371
+  model:
+    context_length: 512
+    d_model: 1344
+    n_heads: 21
+    n_layers: 21
+  params: 541326912
+  ratio: 2.6009706755536293
+  scheduler:
+    t_warmup: 1074
+  tokens: 1407975424
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 473
+  max_duration: 4738
+  model:
+    context_length: 512
+    d_model: 1408
+    n_heads: 22
+    n_layers: 22
+  params: 613607808
+  ratio: 2.0241565635357754
+  scheduler:
+    t_warmup: 947
+  tokens: 1242038272
+  total_flops: 4573050519273255936
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 5753
+  max_duration: 57532
+  model:
+    context_length: 512
+    d_model: 704
+    n_heads: 11
+    n_layers: 11
+  params: 110508992
+  ratio: 136.47458306379266
+  scheduler:
+    t_warmup: 11506
+  tokens: 15081668608
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 4740
+  max_duration: 47402
+  model:
+    context_length: 512
+    d_model: 768
+    n_heads: 12
+    n_layers: 12
+  params: 134124288
+  ratio: 92.64653011988403
+  scheduler:
+    t_warmup: 9480
+  tokens: 12426149888
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 3942
+  max_duration: 39421
+  model:
+    context_length: 512
+    d_model: 832
+    n_heads: 13
+    n_layers: 13
+  params: 161279040
+  ratio: 64.07514965366857
+  scheduler:
+    t_warmup: 7884
+  tokens: 10333978624
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 3306
+  max_duration: 33067
+  model:
+    context_length: 512
+    d_model: 896
+    n_heads: 14
+    n_layers: 14
+  params: 192268160
+  ratio: 45.08450930200819
+  scheduler:
+    t_warmup: 6613
+  tokens: 8668315648
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 2796
+  max_duration: 27960
+  model:
+    context_length: 512
+    d_model: 960
+    n_heads: 15
+    n_layers: 15
+  params: 227386560
+  ratio: 32.2338586766078
+  scheduler:
+    t_warmup: 5592
+  tokens: 7329546240
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 2381
+  max_duration: 23818
+  model:
+    context_length: 512
+    d_model: 1024
+    n_heads: 16
+    n_layers: 16
+  params: 266929152
+  ratio: 23.39102246876355
+  scheduler:
+    t_warmup: 4763
+  tokens: 6243745792
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 2043
+  max_duration: 20430
+  model:
+    context_length: 512
+    d_model: 1088
+    n_heads: 17
+    n_layers: 17
+  params: 311190848
+  ratio: 17.210023862912575
+  scheduler:
+    t_warmup: 4086
+  tokens: 5355601920
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 1763
+  max_duration: 17637
+  model:
+    context_length: 512
+    d_model: 1152
+    n_heads: 18
+    n_layers: 18
+  params: 360466560
+  ratio: 12.826248648418316
+  scheduler:
+    t_warmup: 3527
+  tokens: 4623433728
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 1531
+  max_duration: 15318
+  model:
+    context_length: 512
+    d_model: 1216
+    n_heads: 19
+    n_layers: 19
+  params: 415051200
+  ratio: 9.674762516046213
+  scheduler:
+    t_warmup: 3063
+  tokens: 4015521792
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 1337
+  max_duration: 13378
+  model:
+    context_length: 512
+    d_model: 1280
+    n_heads: 20
+    n_layers: 20
+  params: 475239680
+  ratio: 7.379355259224146
+  scheduler:
+    t_warmup: 2675
+  tokens: 3506962432
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 1174
+  max_duration: 11744
+  model:
+    context_length: 512
+    d_model: 1344
+    n_heads: 21
+    n_layers: 21
+  params: 541326912
+  ratio: 5.687171776894772
+  scheduler:
+    t_warmup: 2348
+  tokens: 3078619136
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 1036
+  max_duration: 10361
+  model:
+    context_length: 512
+    d_model: 1408
+    n_heads: 22
+    n_layers: 22
+  params: 613607808
+  ratio: 4.426400623637436
+  scheduler:
+    t_warmup: 2072
+  tokens: 2716073984
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 817
+  max_duration: 8172
+  model:
+    context_length: 512
+    d_model: 1536
+    n_heads: 24
+    n_layers: 24
+  params: 777930240
+  ratio: 2.753769757041454
+  scheduler:
+    t_warmup: 1634
+  tokens: 2142240768
+  total_flops: 10000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 8672
+  max_duration: 86726
+  model:
+    context_length: 512
+    d_model: 832
+    n_heads: 13
+    n_layers: 13
+  params: 161279040
+  ratio: 140.96500415677076
+  scheduler:
+    t_warmup: 17345
+  tokens: 22734700544
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 7274
+  max_duration: 72748
+  model:
+    context_length: 512
+    d_model: 896
+    n_heads: 14
+    n_layers: 14
+  params: 192268160
+  ratio: 99.18673852186446
+  scheduler:
+    t_warmup: 14549
+  tokens: 19070451712
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 6151
+  max_duration: 61512
+  model:
+    context_length: 512
+    d_model: 960
+    n_heads: 15
+    n_layers: 15
+  params: 227386560
+  ratio: 70.91448908853715
+  scheduler:
+    t_warmup: 12302
+  tokens: 16125001728
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 5240
+  max_duration: 52400
+  model:
+    context_length: 512
+    d_model: 1024
+    n_heads: 16
+    n_layers: 16
+  params: 266929152
+  ratio: 51.46064226061004
+  scheduler:
+    t_warmup: 10480
+  tokens: 13736345600
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 4494
+  max_duration: 44947
+  model:
+    context_length: 512
+    d_model: 1088
+    n_heads: 17
+    n_layers: 17
+  params: 311190848
+  ratio: 37.86289488821985
+  scheduler:
+    t_warmup: 8989
+  tokens: 11782586368
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 3880
+  max_duration: 38803
+  model:
+    context_length: 512
+    d_model: 1152
+    n_heads: 18
+    n_layers: 18
+  params: 360466560
+  ratio: 28.21891060296966
+  scheduler:
+    t_warmup: 7760
+  tokens: 10171973632
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 3369
+  max_duration: 33699
+  model:
+    context_length: 512
+    d_model: 1216
+    n_heads: 19
+    n_layers: 19
+  params: 415051200
+  ratio: 21.284098578681377
+  scheduler:
+    t_warmup: 6739
+  tokens: 8833990656
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 2943
+  max_duration: 29431
+  model:
+    context_length: 512
+    d_model: 1280
+    n_heads: 20
+    n_layers: 20
+  params: 475239680
+  ratio: 16.234250608030038
+  scheduler:
+    t_warmup: 5886
+  tokens: 7715160064
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 2583
+  max_duration: 25838
+  model:
+    context_length: 512
+    d_model: 1344
+    n_heads: 21
+    n_layers: 21
+  params: 541326912
+  ratio: 12.512359023450879
+  scheduler:
+    t_warmup: 5167
+  tokens: 6773276672
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 2279
+  max_duration: 22795
+  model:
+    context_length: 512
+    d_model: 1408
+    n_heads: 22
+    n_layers: 22
+  params: 613607808
+  ratio: 9.738423146010554
+  scheduler:
+    t_warmup: 4559
+  tokens: 5975572480
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 1798
+  max_duration: 17980
+  model:
+    context_length: 512
+    d_model: 1536
+    n_heads: 24
+    n_layers: 24
+  params: 777930240
+  ratio: 6.058832627460272
+  scheduler:
+    t_warmup: 3596
+  tokens: 4713349120
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 32
+  device_train_microbatch_size: 32
+  eval_interval: 1441
+  max_duration: 14411
+  model:
+    context_length: 512
+    d_model: 1664
+    n_heads: 26
+    n_layers: 26
+  params: 970566272
+  ratio: 3.892322753206079
+  scheduler:
+    t_warmup: 2882
+  tokens: 3777757184
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 32
+  device_train_microbatch_size: 32
+  eval_interval: 1171
+  max_duration: 11715
+  model:
+    context_length: 512
+    d_model: 1792
+    n_heads: 28
+    n_layers: 28
+  params: 1193875200
+  ratio: 2.5723098695743074
+  scheduler:
+    t_warmup: 2343
+  tokens: 3071016960
+  total_flops: 22000000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 13532
+  max_duration: 135328
+  model:
+    context_length: 512
+    d_model: 960
+    n_heads: 15
+    n_layers: 15
+  params: 227386560
+  ratio: 156.0137205646631
+  scheduler:
+    t_warmup: 27065
+  tokens: 35475423232
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 11528
+  max_duration: 115281
+  model:
+    context_length: 512
+    d_model: 1024
+    n_heads: 16
+    n_layers: 16
+  params: 266929152
+  ratio: 113.21439504666766
+  scheduler:
+    t_warmup: 23056
+  tokens: 30220222464
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 9888
+  max_duration: 98884
+  model:
+    context_length: 512
+    d_model: 1088
+    n_heads: 17
+    n_layers: 17
+  params: 311190848
+  ratio: 83.29887418797098
+  scheduler:
+    t_warmup: 19776
+  tokens: 25921847296
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 8536
+  max_duration: 85366
+  model:
+    context_length: 512
+    d_model: 1152
+    n_heads: 18
+    n_layers: 18
+  params: 360466560
+  ratio: 62.081166985364746
+  scheduler:
+    t_warmup: 17073
+  tokens: 22378184704
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 7413
+  max_duration: 74139
+  model:
+    context_length: 512
+    d_model: 1216
+    n_heads: 19
+    n_layers: 19
+  params: 415051200
+  ratio: 46.825774786339615
+  scheduler:
+    t_warmup: 14827
+  tokens: 19435094016
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 6475
+  max_duration: 64750
+  model:
+    context_length: 512
+    d_model: 1280
+    n_heads: 20
+    n_layers: 20
+  params: 475239680
+  ratio: 35.716344224455334
+  scheduler:
+    t_warmup: 12950
+  tokens: 16973824000
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 5684
+  max_duration: 56845
+  model:
+    context_length: 512
+    d_model: 1344
+    n_heads: 21
+    n_layers: 21
+  params: 541326912
+  ratio: 27.527867818254713
+  scheduler:
+    t_warmup: 11369
+  tokens: 14901575680
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 5014
+  max_duration: 50149
+  model:
+    context_length: 512
+    d_model: 1408
+    n_heads: 22
+    n_layers: 22
+  params: 613607808
+  ratio: 21.42453092122322
+  scheduler:
+    t_warmup: 10029
+  tokens: 13146259456
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 64
+  eval_interval: 3955
+  max_duration: 39556
+  model:
+    context_length: 512
+    d_model: 1536
+    n_heads: 24
+    n_layers: 24
+  params: 777930240
+  ratio: 13.329431780412598
+  scheduler:
+    t_warmup: 7911
+  tokens: 10369368064
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 32
+  device_train_microbatch_size: 32
+  eval_interval: 3170
+  max_duration: 31705
+  model:
+    context_length: 512
+    d_model: 1664
+    n_heads: 26
+    n_layers: 26
+  params: 970566272
+  ratio: 8.563326132148966
+  scheduler:
+    t_warmup: 6341
+  tokens: 8311275520
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 32
+  device_train_microbatch_size: 32
+  eval_interval: 2577
+  max_duration: 25774
+  model:
+    context_length: 512
+    d_model: 1792
+    n_heads: 28
+    n_layers: 28
+  params: 1193875200
+  ratio: 5.659301287102705
+  scheduler:
+    t_warmup: 5154
+  tokens: 6756499456
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 32
+  device_train_microbatch_size: 32
+  eval_interval: 2121
+  max_duration: 21218
+  model:
+    context_length: 512
+    d_model: 1920
+    n_heads: 30
+    n_layers: 30
+  params: 1450216320
+  ratio: 3.835408080361418
+  scheduler:
+    t_warmup: 4243
+  tokens: 5562171392
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 32
+  device_train_microbatch_size: 32
+  eval_interval: 1766
+  max_duration: 17665
+  model:
+    context_length: 512
+    d_model: 2048
+    n_heads: 32
+    n_layers: 32
+  params: 1741948928
+  ratio: 2.6583866412873385
+  scheduler:
+    t_warmup: 3533
+  tokens: 4630773760
+  total_flops: 48400000000000000000
+- device_eval_batch_size: 8
+  device_train_microbatch_size: 8
+  eval_interval: 19208
+  max_duration: 192080
+  model:
+    context_length: 512
+    d_model: 2560
+    n_heads: 40
+    n_layers: 40
+  params: 3309980160
+  ratio: 15.2123629405682
+  scheduler:
+    t_warmup: 38416
+  tokens: 50352619520
+  total_flops: 1000000000000000000000
+wandb:
+  group: new-scale-big-1
