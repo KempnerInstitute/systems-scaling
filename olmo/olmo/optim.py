@@ -620,7 +620,7 @@ def get_param_groups(cfg: TrainConfig, model: nn.Module) -> List[Dict[str, Any]]
     all_params = {}
     for mn, m in model.named_modules():
         for pn, p in m.named_parameters():
-            print('param name', pn)
+            # print('param name', pn)
             # NOTE: because named_modules and named_parameters are recursive
             # we will see the same tensors p many many times, but doing it this way
             # allows us to know which parent module any tensor p belongs to...

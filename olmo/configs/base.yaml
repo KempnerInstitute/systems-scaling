@@ -29,8 +29,11 @@ model:
   residual_dropout: 0.0
   embedding_dropout: 0.0
   # Llama-2-7b
-  vocab_size: 128256 # 32000
-  embedding_size: 128256 # 32000
+  vocab_size: 32100
+  embedding_size: 32100
+  # Llama 3
+  # vocab_size: 128256 
+  # embedding_size: 128256 
   eos_token_id: 2
   pad_token_id: 0 # 2
   init_device: meta
@@ -70,7 +73,7 @@ scheduler:
 
 optimizer:
   name: adamw
-  learning_rate: 5.0e-4 # 1.0e-3
+  learning_rate: 8.0e-4 # 1.0e-3
   weight_decay: 0.0
   eps: 1e-15
   betas:
@@ -89,10 +92,10 @@ softmax_auxiliary_loss: false
 datasets:
   name: algebraic-stack
   # paths: ${path.glob:/n/holyscratch01/kempner_fellows/Lab/data/c4-tokenized-llama/*/*.npy}
-  # paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv" # c4 
-  # tokenizer_used: t5-base
-  paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default" # c4 
-  tokenizer_used: baseten/Meta-Llama-3-tokenizer
+  paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv" 
+  tokenizer_used: t5-base
+  # paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default"  
+  # tokenizer_used: baseten/Meta-Llama-3-tokenizer
   memmap_dtype: uint16
   pad_direction: right
   num_workers: 16
@@ -104,7 +107,8 @@ datasets:
   extra_data_paths: null
 
 tokenizer:
-  identifier: baseten/Meta-Llama-3-tokenizer #meta-llama/Llama-2-7b-hf # google-t5/t5-base
+  identifier: google-t5/t5-base
+  # identifier: baseten/Meta-Llama-3-tokenizer # meta-llama/Llama-2-7b-hf
   truncate_direction: right
 
 save_folder: ${oc.env:CHECKPOINTS_PATH}/${model.w_mx_format}_${model.a_mx_format}
@@ -132,16 +136,16 @@ evaluators:
   ##########################
   # Perplexity evaluations #
   ##########################
-  # - label: redpajama
-  #   data:
-  #     datasets:
-  #       redpajama_val: redpajama-val
-  #     drop_last: true
-  - label: fineweb
+  - label: redpajama
     data:
       datasets:
-        fineweb: fineweb
+        redpajama_val: redpajama-val
       drop_last: true
+  # - label: fineweb
+  #   data:
+  #     datasets:
+  #       fineweb: fineweb
+  #     drop_last: true
 #   - label: c4
 #     data:
 #       datasets:
