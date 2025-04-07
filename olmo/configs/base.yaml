@@ -4,7 +4,7 @@ dry_run: false
 
 max_duration: 48000 # ~12B tokens for batches of 256 x 2048
 training: 
-  batch_size: 256 # global_train_batch_size
+  batch_size: 512 # global_train_batch_size
 device_train_microbatch_size: 32 # For H100 w/color, need smaller for RHO methods
 
 model:
@@ -42,13 +42,13 @@ model:
 
   # quantizations
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
-  w_mx_format: 'bfloat16'
-  a_mx_format: 'bfloat16'
+  w_mx_format: 'fp8_e4m3'
+  a_mx_format: 'fp8_e4m3'
 
 
 # TODO: add your own wandb information
 wandb:
-  name: flops_${model.w_mx_format}_${model.a_mx_format}
+  name: ${model.w_mx_format}_${model.a_mx_format}_${oc.env:SLURM_ARRAY_TASK_ID}
   log_interval: ${console_log_interval}
   entity: harvardml
   project: test-precision-olmo-new
@@ -73,7 +73,7 @@ scheduler:
 
 optimizer:
   name: adamw
-  learning_rate: 8.0e-4 # 1.0e-3
+  learning_rate: 3.0e-4 # 1.0e-3
   weight_decay: 0.0
   eps: 1e-15
   betas:
@@ -111,7 +111,7 @@ tokenizer:
   # identifier: baseten/Meta-Llama-3-tokenizer # meta-llama/Llama-2-7b-hf
   truncate_direction: right
 
-save_folder: ${oc.env:CHECKPOINTS_PATH}/${model.w_mx_format}_${model.a_mx_format}
+save_folder: ${oc.env:CHECKPOINTS_PATH}/${model.w_mx_format}_${model.a_mx_format} #_${oc.env:SLURM_ARRAY_TASK_ID}
 save_overwrite: true
 # Sharded checkpoints (best for restarts)
 save_interval: 6000
