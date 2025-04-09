@@ -48,7 +48,7 @@ model:
 
 # TODO: add your own wandb information
 wandb:
-  name: flops_${model.w_mx_format}_${model.a_mx_format}
+  name: ${model.w_mx_format}_${model.a_mx_format}_lr3e-4
   log_interval: ${console_log_interval}
   entity: harvardml
   project: test-precision-olmo-new
@@ -73,7 +73,7 @@ scheduler:
 
 optimizer:
   name: adamw
-  learning_rate: 5.0e-4 #8.0e-4 # 1.0e-3
+  learning_rate: 3.0e-4 #8.0e-4 # 1.0e-3
   weight_decay: 0.0
   eps: 1e-15
   betas:

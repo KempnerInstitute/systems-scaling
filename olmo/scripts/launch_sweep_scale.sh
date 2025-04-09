@@ -8,7 +8,7 @@
 #SBATCH --time=71:30:00
 #SBATCH --mem=0		
 #SBATCH --account=kempner_dev
-#SBATCH --partition=kempner_h100
+#SBATCH --partition=kempner_h100_priority
 #SBATCH --mail-user=nikhil_anand@g.harvard.edu
 #SBATCH --mail-type=END
 #SBATCH --array=1-56%4
