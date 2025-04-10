@@ -23,6 +23,7 @@ DATA_DICT = {
     # Smollm: python -> 4B, fw -> 40B, owm -> 4B, cp2 -> 8B -> ~60B tokens
     "smollm-corpus": f"{data_path_2}/smollm-corpus",
     "smollm-corpus-val": f"{data_path_2}/smollm-corpus-val",
+    "fineweb-nikhil-val": "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2-sapphire-low-resource/val/",
 }
 
 
