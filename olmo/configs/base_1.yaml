@@ -42,8 +42,8 @@ model:
 
   # quantizations
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
-  w_mx_format: 'float32'
-  a_mx_format: 'float32'
+  w_mx_format: 'fp8_e4m3'
+  a_mx_format: 'fp8_e4m3'
 
 
 # TODO: add your own wandb information
@@ -82,7 +82,7 @@ optimizer:
   metrics_log_interval: 100
 
 activation_checkpointing: false
-softmax_auxiliary_loss: true
+softmax_auxiliary_loss: false
 
 # datasets:
 #   name: algebraic-stack

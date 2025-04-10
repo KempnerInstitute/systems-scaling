@@ -41,6 +41,11 @@ class Evaluator:
                 metrics = {self.label: self.eval_metric}
             else:
                 metrics = self.eval_metric
+
+            # Initialize min loss tracking dict if not already present
+            if not hasattr(self, "min_losses"):
+                self.min_losses = {}
+
             out = {}
             for label in sorted(metrics.keys()):
                 metric = metrics[label]
@@ -58,8 +63,15 @@ class Evaluator:
                     # get to this one within the current evaluation loop.
                     continue
                 else:
-                    out[f"eval/{label}/CrossEntropyLoss"] = loss.item()
+                    loss_val = loss.item()
+                    out[f"eval/{label}/CrossEntropyLoss"] = loss_val
                     out[f"eval/{label}/Perplexity"] = torch.exp(loss).item()
+
+                    # Track and log minimum loss
+                    prev_min = self.min_losses.get(label, float("inf"))
+                    if loss_val < prev_min:
+                        self.min_losses[label] = loss_val
+                    out[f"eval/{label}/MinCrossEntropyLoss"] = self.min_losses[label]
             return out
         else:
             raise ValueError(f"Unexpected evaluator type '{self.type}'")
