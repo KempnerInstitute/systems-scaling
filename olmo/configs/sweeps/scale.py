@@ -187,5 +187,5 @@ if __name__ == "__main__":
     print(f"Total sweep size: {len(sweep_config['sweep']) * len(train_sets)}")
     print(f"Max tokens needed: {max_tokens}")
 
-    with open("configs/sweeps/scale_overtrained.yaml", "w") as f:
+    with open("configs/sweeps/scale.yaml", "w") as f:
         yaml.dump(sweep_config, f)
