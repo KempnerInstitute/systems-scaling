@@ -29,7 +29,7 @@ model:
   residual_dropout: 0.0
   embedding_dropout: 0.0
   # Llama-2-7b
-  vocab_size: 32100
+  vocab_size: 32000
   embedding_size: 32100
   # Llama 3
   # vocab_size: 128256 
@@ -43,7 +43,7 @@ model:
   # quantizations
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
   w_mx_format: 'fp6_e2m3' #'bfloat16'
-  a_mx_format: '“fp6_e3m2' #'bfloat16'
+  a_mx_format: 'fp6_e3m2' #'bfloat16'
 
 
 # TODO: add your own wandb information
@@ -128,9 +128,9 @@ speed_monitor:
 
 console_log_interval: 10
 
-eval_interval: 2000
+eval_interval: 1000
 eval_on_load: false
-eval_subset_num_batches: 100
+eval_subset_num_batches: 200
 device_eval_batch_size: ${device_train_microbatch_size}
 evaluators:
   ##########################
