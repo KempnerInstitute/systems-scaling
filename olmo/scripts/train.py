@@ -39,7 +39,7 @@ from olmo.train import Trainer
 from olmo.util import clean_opt, log_extra_field, prepare_cli_environment
 from olmo.registry import MODEL_DICT, INDEX_DICT
 
-from mx import finalize_mx_specs, mx_mapping
+# from mx import finalize_mx_specs, mx_mapping
 
 log = logging.getLogger("train")
 
@@ -51,6 +51,7 @@ def build_models(cfg: TrainConfig):
 
 
     ## MXFP8_e5m2 matmuls with bfloat16 vector ops
+
 
     mx_specs = {
             'scale_bits': 8,
@@ -64,6 +65,7 @@ def build_models(cfg: TrainConfig):
         }
     mx_specs = finalize_mx_specs(mx_specs)
     mx_mapping.inject_pyt_ops(mx_specs)
+
 
     olmo_model = OLMo(cfg.model)
     log.info(f"Total number of parameters: {olmo_model.num_params():,d}")

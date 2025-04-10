@@ -1,19 +1,20 @@
 #!/bin/bash
 #SBATCH --job-name=test-olmo-run
-#SBATCH --output=/n/holylfs06/LABS/kempner_dev/Lab/nikhilanand/systems-scaling/olmo/logs/%A_%a.log
-#SBATCH --nodes=4    
+
+#SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/olmo/logs/%A_%a.log
+#SBATCH --nodes=4
+
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4    
 #SBATCH --cpus-per-task=24
 #SBATCH --time=71:30:00
 #SBATCH --mem=0		
-#SBATCH --account=kempner_dev
-#SBATCH --partition=kempner_h100_priority
-#SBATCH --mail-user=nikhil_anand@g.harvard.edu
+
+#SBATCH --account=kempner_grads
+#SBATCH --partition=kempner_h100
+#SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
-
-#SBATCH --array=1-56%4
-
+#SBATCH --array=9-40
 
 #SBATCH --exclusive
 
