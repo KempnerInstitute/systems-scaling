@@ -48,7 +48,10 @@ def build_models(cfg: TrainConfig):
     # Initialize the model.
     log.info("Building model...")
 
-    # MXFP8_e5m2 matmuls with bfloat16 vector ops
+
+
+    ## MXFP8_e5m2 matmuls with bfloat16 vector ops
+
     mx_specs = {
             'scale_bits': 8,
             'w_elem_format': cfg.model.w_mx_format,
