@@ -636,6 +636,61 @@ class Trainer:
             attention_mask=batch.get("attention_mask"),
             attention_bias=batch.get("attention_bias"),
         ).logits
+        # Print the first parameter in model's named parameters
+        # first_param = None
+        # for name, param in self.fsdp_model.named_parameters():
+        #     print(f"First parameter: {name}, shape: {param.shape}")
+        #     first_param = param
+        #     break
+
+        # if first_param is not None:
+        #     print(f"First parameter data type: {first_param.dtype}")
+        #     print(f"First parameter device: {first_param.device}")
+        #     if first_param is not None:
+        #         # Print first value in the first parameter
+        #         flat_param = first_param.flatten()
+        #         if len(flat_param) > 0:
+        #             print(f"First value in first parameter: {flat_param[0].item()}")
+        # # Temporarily quantize parameters to 8-bit precision before forward pass
+        # with torch.no_grad():
+        #     original_params = {}
+        #     for name, param in self.fsdp_model.named_parameters():
+        #         # Store original parameters
+        #         original_params[name] = param.data.clone()
+        #         if param.numel() == 0:
+        #             continue
+        #         # Quantize to 8 bits and then dequantize back to bf16
+        #         # This simulates 8-bit precision while keeping the data type as bf16
+        #         scale = (param.abs().max() / 127.0).clamp(min=1e-5)  # Scale factor for quantization
+        #         param.data = (param.data / scale).round().clamp(-127, 127) * scale
+        
+        # first_param = None
+        # for name, param in self.fsdp_model.named_parameters():
+        #     print(f"qFirst parameter: {name}, shape: {param.shape}")
+        #     first_param = param
+        #     break
+
+        # if first_param is not None:
+        #     print(f"qFirst parameter data type: {first_param.dtype}")
+        #     print(f"qFirst parameter device: {first_param.device}")
+        #     if first_param is not None:
+        #         # Print first value in the first parameter
+        #         flat_param = first_param.flatten()
+        #         if len(flat_param) > 0:
+        #             print(f"qFirst value in first parameter: {flat_param[0].item()}")
+
+        # # Run the forward pass with quantized parameters
+        # logits = self.fsdp_model(
+        #     input_ids=batch["input_ids"],
+        #     attention_mask=batch.get("attention_mask"),
+        #     attention_bias=batch.get("attention_bias"),
+        # ).logits
+        
+        # # Restore original parameters
+        # with torch.no_grad():
+        #     for name, param in self.fsdp_model.named_parameters():
+        #         if name in original_params:
+        #             param.data.copy_(original_params[name])
         logits_for_loss = logits[..., :-1, :].contiguous()
         # shape: (batch_size * seq_len, vocab_size)
         logits_for_loss = logits_for_loss.view(-1, logits_for_loss.size(-1))

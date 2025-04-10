@@ -29,8 +29,8 @@ model:
   residual_dropout: 0.0
   embedding_dropout: 0.0
   # Llama-2-7b
-  vocab_size: 32100
-  embedding_size: 32100
+  vocab_size: 128256
+  embedding_size: 128256
   # Llama 3
   # vocab_size: 128256 
   # embedding_size: 128256 
@@ -42,16 +42,16 @@ model:
 
   # quantizations
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
-  w_mx_format: 'fp8_e4m3'
-  a_mx_format: 'fp8_e4m3'
+  # w_mx_format: 'fp8_e4m3'
+  # a_mx_format: 'fp8_e4m3'
 
 
 # TODO: add your own wandb information
 wandb:
-  name: ${model.w_mx_format}_${model.a_mx_format}_${oc.env:SLURM_ARRAY_TASK_ID}
+  name: debug_${oc.env:SLURM_ARRAY_TASK_ID}
   log_interval: ${console_log_interval}
-  entity: harvardml
-  project: test-precision-olmo-new
+  entity: dense_nanotron
+  project: smooth
   group: debug
 
 # compile: null

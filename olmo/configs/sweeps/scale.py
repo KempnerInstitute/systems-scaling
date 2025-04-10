@@ -13,54 +13,62 @@ train_sets = [
 ]
 
 sweep_config = {
-    "wandb": {"group": "new-scale-big-1"},
+    "wandb": {"group": "smooth", "project": "smooth"},
     "sweep": [],
     "save_num_checkpoints_to_keep": 1,
     "save_num_unsharded_checkpoints_to_keep": 1,
     "save_interval": 1000,
     "save_interval_unsharded": 100000,
-    "data": {
-        "paths": train_sets,
+    # "data": {
+    #     "paths": train_sets,
+    # },
+    "training": {
+        "batch_size": 128 # global_train_batch_size
     },
-    "global_train_batch_size": 512,
 }
 
 
-iso_flops = [int(n) for n in np.geomspace(2e17, 1e19, 6)] + [int(2.2e19), int(4.84e19), int(1e21)]
+#iso_flops = [int(n) for n in np.geomspace(2e17, 1e19, 6)] + [int(2.2e19), int(4.84e19), int(1e21)]
+
+# model_sizes = [
+#     (256, 4),
+#     (320, 5),
+#     (384, 6),
+#     (448, 7),  # 50M
+#     (512, 8),
+#     (576, 9),
+#     (640, 10),
+#     (704, 11),
+#     (768, 12),
+#     (832, 13),
+#     (896, 14),
+#     (960, 15),
+#     (1024, 16),  # 260M
+#     (1088, 17),
+#     (1152, 18),
+#     (1216, 19),  # 450M
+#     (1280, 20),
+#     (1344, 21),
+#     (1408, 22),  # 610M
+#     (1536, 24),
+#     (1664, 26),
+#     (1792, 28),
+#     (1920, 30),
+#     (2048, 32),  # 1.7B
+#     (2176, 34),
+#     (2304, 36),  # 2.4B
+#     (2432, 38),  # 2.9B
+#     (2560, 40),  # 3.3B
+# ]
+
+iso_flops = [int(2.2e19)]
 
 model_sizes = [
-    (256, 4),
-    (320, 5),
-    (384, 6),
-    (448, 7),  # 50M
-    (512, 8),
-    (576, 9),
-    (640, 10),
-    (704, 11),
-    (768, 12),
-    (832, 13),
-    (896, 14),
-    (960, 15),
-    (1024, 16),  # 260M
-    (1088, 17),
-    (1152, 18),
-    (1216, 19),  # 450M
-    (1280, 20),
-    (1344, 21),
-    (1408, 22),  # 610M
-    (1536, 24),
-    (1664, 26),
-    (1792, 28),
-    (1920, 30),
-    (2048, 32),  # 1.7B
-    (2176, 34),
-    (2304, 36),  # 2.4B
-    (2432, 38),  # 2.9B
-    (2560, 40),  # 3.3B
+    (512, 6),
 ]
 
-vocab_size = 32000
-
+# vocab_size = 32000
+vocab_size = 128256
 
 model_defaults = {
     "context_length": 512,
@@ -145,7 +153,7 @@ def expand_config(
     params,
     fwd_flops,
     config,
-    global_bs=sweep_config["global_train_batch_size"],
+    global_bs=sweep_config["training"]["batch_size"],
     seq_len=model_defaults["context_length"],
 ):
     tok_bs = seq_len * global_bs
@@ -187,5 +195,5 @@ if __name__ == "__main__":
     print(f"Total sweep size: {len(sweep_config['sweep']) * len(train_sets)}")
     print(f"Max tokens needed: {max_tokens}")
 
-    with open("configs/sweeps/scale.yaml", "w") as f:
+    with open("configs/qat/scale.yaml", "w") as f:
         yaml.dump(sweep_config, f)
