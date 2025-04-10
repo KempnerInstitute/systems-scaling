@@ -3,14 +3,14 @@ import numpy as np
 from olmo.model import OLMo
 from olmo.config import ModelConfig
 
-train_sets = [
-    "fineweb-100b",
-    "starcoder",
-    "proof-pile-2",  # ~50B toks
-    "fineweb-edu-100b",
-    "slimpajama-chunk1",  # ~65B toks
-    "smollm-corpus",  # ~60B toks
-]
+# train_sets = [
+#     "fineweb-100b",
+#     "starcoder",
+#     "proof-pile-2",  # ~50B toks
+#     "fineweb-edu-100b",
+#     "slimpajama-chunk1",  # ~65B toks
+#     "smollm-corpus",  # ~60B toks
+# ]
 
 sweep_config = {
     "wandb": {"group": "new-scale-big-1"},
@@ -19,10 +19,13 @@ sweep_config = {
     "save_num_unsharded_checkpoints_to_keep": 1,
     "save_interval": 1000,
     "save_interval_unsharded": 100000,
-    "data": {
-        "paths": train_sets,
+    # "data": {
+    #     "paths": train_sets,
+    # },
+    # "global_train_batch_size": 512,
+    "training": {
+        "batch_size": 512 # global_train_batch_size,
     },
-    "global_train_batch_size": 512,
 }
 
 
@@ -145,7 +148,7 @@ def expand_config(
     params,
     fwd_flops,
     config,
-    global_bs=sweep_config["global_train_batch_size"],
+    global_bs=sweep_config["training"]["batch_size"],
     seq_len=model_defaults["context_length"],
 ):
     tok_bs = seq_len * global_bs
@@ -184,8 +187,8 @@ if __name__ == "__main__":
                 print(f"Added config!")
                 max_tokens = max(max_tokens, tokens)
 
-    print(f"Total sweep size: {len(sweep_config['sweep']) * len(train_sets)}")
+    print(f"Total sweep size: {len(sweep_config['sweep'])}") #len(train_sets)}")
     print(f"Max tokens needed: {max_tokens}")
 
-    with open("configs/sweeps/scale_overtrained.yaml", "w") as f:
+    with open("configs/sweeps/scale.yaml", "w") as f:
         yaml.dump(sweep_config, f)

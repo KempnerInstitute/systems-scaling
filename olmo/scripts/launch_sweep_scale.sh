@@ -1,17 +1,15 @@
 #!/bin/bash
 #SBATCH --job-name=test-olmo-run
-#SBATCH --output=/n/holylfs06/LABS/kempner_dev/Lab/nikhilanand/systems-scaling/olmo/logs/%A_%a.log
+#SBATCH --output=/n/netscratch/sham_lab/Everyone/mkwun/systems-scaling/olmo/ptx_logs/%A_%a.log
 #SBATCH --nodes=4    
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4    
 #SBATCH --cpus-per-task=24
 #SBATCH --time=71:30:00
 #SBATCH --mem=0		
-#SBATCH --account=kempner_dev
-#SBATCH --partition=kempner_h100_priority
-#SBATCH --mail-user=nikhil_anand@g.harvard.edu
-#SBATCH --mail-type=END
-#SBATCH --array=1-56%4
+#SBATCH --account=kempner_sham_lab
+#SBATCH --partition=kempner_h100
+#SBATCH --array=1-56%1
 #SBATCH --exclusive
 
 sleep $((RANDOM % 240))
@@ -20,12 +18,11 @@ sleep $((RANDOM % 240))
 # Custom environment
 source ~/.bashrc
 mamba deactivate
-mamba activate olmo_test
+mamba activate qat
 
 # sleep $(( SLURM_ARRAY_TASK_ID * 60 ))
-module load cuda/12.4.1-fasrc01
+module load cuda/12.4.1-fasrc01 cudnn gcc/12.2.0-fasrc01
 export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-linux/include
-module load gcc/12.2.0-fasrc01
 
 export HF_DATASETS_OFFLINE=1 # Only use cached data
 export CONFIG=$1
@@ -42,7 +39,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/holylfs06/LABS/kempner_dev/Lab/nikhilanand/systems-scaling/ckpts"
+export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Everyone/mkwun/systems-scaling/olmo/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
