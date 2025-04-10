@@ -42,8 +42,8 @@ model:
 
   # quantizations
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
-  w_mx_format: 'fp4' #'bfloat16'
-  a_mx_format: 'fp4' #'bfloat16'
+  w_mx_format: 'bfloat16'
+  a_mx_format: 'bfloat16'
 
 
 # TODO: add your own wandb information
@@ -73,7 +73,7 @@ scheduler:
 
 optimizer:
   name: adamw
-  learning_rate: 3.0e-4 #8.0e-4 # 1.0e-3
+  learning_rate: 1.0e-3 #8.0e-4 # 1.0e-3
   weight_decay: 0.0
   eps: 1e-15
   betas:
