@@ -234,6 +234,8 @@ class OlmoDataset(metaclass=abc.ABCMeta):
 
     def token_encode(self, string: str) -> List[int]:
         return self.tokenizer.base_tokenizer.encode(string, add_special_tokens=False).ids
+        # return self.tokenizer._tokenizer.encode(string, add_special_tokens=False).ids
+        
 
     def token_decode(self, tokens: List[int]) -> str:
         return self.tokenizer.decode(tokens)

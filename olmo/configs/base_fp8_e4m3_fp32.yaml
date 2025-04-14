@@ -4,7 +4,7 @@ dry_run: false
 
 max_duration: 48000 # ~12B tokens for batches of 256 x 2048
 training: 
-  batch_size: 512 # global_train_batch_size
+  batch_size: 256 # global_train_batch_size
 device_train_microbatch_size: 32 # For H100 w/color, need smaller for RHO methods
 
 model:
@@ -29,7 +29,7 @@ model:
   residual_dropout: 0.0
   embedding_dropout: 0.0
   # Llama-2-7b
-  vocab_size: 32100
+  vocab_size: 32000
   embedding_size: 32100
   # Llama 3
   # vocab_size: 128256 
@@ -42,16 +42,16 @@ model:
 
   # quantizations
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
-  w_mx_format: 'float32'
-  a_mx_format: 'float32'
+  w_mx_format: 'fp8_e4m3' #'bfloat16'
+  a_mx_format: 'bfloat16'
 
 
 # TODO: add your own wandb information
 wandb:
-  name: ${model.w_mx_format}_${model.a_mx_format}_${oc.env:SLURM_ARRAY_TASK_ID}
+  name: ${model.w_mx_format}_${model.a_mx_format}
   log_interval: ${console_log_interval}
   entity: harvardml
-  project: test-precision-olmo-new
+  project: test-precision-MX-fineweb
   group: debug
 
 # compile: null
@@ -74,9 +74,6 @@ scheduler:
 optimizer:
   name: adamw
   learning_rate: 2.0e-4 #8.0e-4 # 1.0e-3
-
-
-
   weight_decay: 0.0
   eps: 1e-15
   betas:
@@ -85,7 +82,7 @@ optimizer:
   metrics_log_interval: 100
 
 activation_checkpointing: false
-softmax_auxiliary_loss: true
+softmax_auxiliary_loss: false
 
 # datasets:
 #   name: algebraic-stack
@@ -93,10 +90,10 @@ softmax_auxiliary_loss: true
 #   tokenizer_used: t5-base
 
 datasets:
-  name: algebraic-stack
+  name: fineweb-edu #algebraic-stack
   # paths: ${path.glob:/n/holyscratch01/kempner_fellows/Lab/data/c4-tokenized-llama/*/*.npy}
-  paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv" 
-  tokenizer_used: t5-base
+  paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2-sapphire-low-resource/default" #"/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv" 
+  tokenizer_used: llama2 #t5-base
   # paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default"  
   # tokenizer_used: baseten/Meta-Llama-3-tokenizer
   memmap_dtype: uint16
@@ -110,11 +107,11 @@ datasets:
   extra_data_paths: null
 
 tokenizer:
-  identifier: google-t5/t5-base
+  identifier: KoboldAI/llama2-tokenizer #google-t5/t5-base
   # identifier: baseten/Meta-Llama-3-tokenizer # meta-llama/Llama-2-7b-hf
   truncate_direction: right
 
-save_folder: ${oc.env:CHECKPOINTS_PATH}/${model.w_mx_format}_${model.a_mx_format}_${oc.env:SLURM_ARRAY_TASK_ID}
+save_folder: ${oc.env:CHECKPOINTS_PATH}/${model.w_mx_format}_${model.a_mx_format}
 save_overwrite: true
 # Sharded checkpoints (best for restarts)
 save_interval: 6000
@@ -131,18 +128,18 @@ speed_monitor:
 
 console_log_interval: 10
 
-eval_interval: 2000
+eval_interval: 1000
 eval_on_load: false
-eval_subset_num_batches: 100
+eval_subset_num_batches: 200
 device_eval_batch_size: ${device_train_microbatch_size}
 evaluators:
   ##########################
   # Perplexity evaluations #
   ##########################
-  - label: redpajama
+  - label: fineweb
     data:
       datasets:
-        redpajama_val: redpajama-val
+        fineweb_nikhil_val: fineweb-nikhil-val
       drop_last: true
   # - label: fineweb
   #   data:

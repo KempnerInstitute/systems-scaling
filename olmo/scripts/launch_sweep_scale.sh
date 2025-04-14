@@ -14,7 +14,7 @@
 #SBATCH --partition=kempner_h100
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
-#SBATCH --array=9-40
+#SBATCH --array=1-96
 
 #SBATCH --exclusive
 
@@ -24,7 +24,7 @@ sleep $((RANDOM % 240))
 # Custom environment
 source ~/.bashrc
 mamba deactivate
-mamba activate olmo_test
+mamba activate sys
 
 # sleep $(( SLURM_ARRAY_TASK_ID * 60 ))
 module load cuda/12.4.1-fasrc01
@@ -46,7 +46,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/holylfs06/LABS/kempner_dev/Lab/nikhilanand/systems-scaling/ckpts"
+export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

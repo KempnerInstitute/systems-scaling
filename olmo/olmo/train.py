@@ -667,7 +667,6 @@ class Trainer:
         z_batch_loss = None if not self.cfg.softmax_auxiliary_loss else torch.tensor(0.0, device=self.device)
         for micro_batch in micro_batches:
             with torch.autocast("cuda", enabled=False, dtype=self.cfg.autocast_precision):
-                print('self.cfg.autocast_precision', self.cfg.autocast_precision)
                 # Run forward pass.
                 ce_loss, z_loss, logits = self.model_forward(
                     micro_batch, compute_z_loss=self.cfg.softmax_auxiliary_loss
