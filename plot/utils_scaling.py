@@ -186,3 +186,65 @@ def plot_contours(
     # ax.set_ylim(np.min(N) / 2, np.max(N) * 3)
     # ax.set_xlim(np.min(F) / 2, np.max(F) * 25)
     return scatter, contour, cmap, norm
+
+
+def plot_contours_params(
+    ax, N, D, L, opt_params, masks, vals, extrapolation, kaplan=False, ncontour=40
+):
+    # A, B, E, alpha, beta = get_params(opt_params)
+    # print(f"A = {A}, B = {B}, E = {E}, alpha = {alpha}, beta = {beta}")
+    F = 6 * np.array(N, dtype=np.float64) * np.array(D, dtype=np.float64)
+
+    # Optimal N line for chinchilla
+    # if not kaplan:
+    #     G = np.power((alpha * A) / (beta * B), 1 / (alpha + beta))
+    # else:
+    #     G = alpha * np.power(A, alpha / beta) / (beta * B)
+    # a = beta / (alpha + beta)
+    # b = alpha / (alpha + beta)
+    # print(f"G = {G}, a = {a}, b = {b}")
+    x = np.linspace(min(F) / 2, max(F) * 25, 100)
+    # if not kaplan:
+    #     y = G * np.power(x / 6, a)
+    # else:
+    #     y = np.power(G * x / 6, a)
+    ax.plot(x, y, c="red", linestyle="--", label="Optimal N")
+
+    # Contours
+    # x = np.geomspace(np.min(F) / 2, np.max(F) * 25, 500)
+    # y = np.geomspace(np.min(N) / 2, np.max(N) * 3, 500)
+    x = np.geomspace(1e17, 2e21, 500)
+    y = np.geomspace(1e7, 5e9, 500)
+    X, Y = np.meshgrid(x, y)
+    if kaplan:
+        curve = kaplan_curve
+    else:
+        curve = chinchilla_curve
+    # params = np.array([np.log(A), np.log(B), np.log(E), alpha, beta])
+    Z = curve(params, Y, X / (6 * Y), masks, vals)
+
+    cmap = cm.viridis
+    # extrapolation
+    if extrapolation is not None:
+        x, y, z = extrapolation  # C, N, L
+
+        norm = Normalize(vmin=min(L.min(), z), vmax=L.max())
+
+        scatter = ax.scatter(x, y, c=z, cmap=cmap, norm=norm, s=20, marker="*")
+    else:
+        norm = Normalize(vmin=L.min(), vmax=L.max())
+
+    scatter = ax.scatter(F, N, c=L, cmap=cmap, norm=norm, s=20)
+    contour = ax.contour(X, Y, Z, levels=ncontour, cmap=cmap, norm=norm)
+    plt.colorbar(scatter, label="Train Loss")
+
+    ax.set_xlabel("FLOPs")
+    ax.set_ylabel("Parameters")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+
+    ax.set_ylim(1e7, 5e9)
+    ax.set_xlim(1e17, 2e21)
+    # ax.set_ylim(np.min(N) / 2, np.max(N) * 3)
+    # ax.set_xlim(np.min(F) / 2, np.max(F) * 25)
+    return scatter, contour, cmap, norm
