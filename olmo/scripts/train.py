@@ -39,7 +39,7 @@ from olmo.train import Trainer
 from olmo.util import clean_opt, log_extra_field, prepare_cli_environment
 from olmo.registry import MODEL_DICT, INDEX_DICT
 
-# from mx import finalize_mx_specs, mx_mapping
+from mx import finalize_mx_specs, mx_mapping
 
 log = logging.getLogger("train")
 
