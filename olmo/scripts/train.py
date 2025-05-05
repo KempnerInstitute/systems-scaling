@@ -54,7 +54,7 @@ def build_models(cfg: TrainConfig):
             'scale_bits': 8,
             'w_elem_format': cfg.model.w_mx_format,
             'a_elem_format': cfg.model.a_mx_format,
-            'block_size': 32,
+            'block_size': int(cfg.model.block_size),
             'bfloat': 16,
             'custom_cuda': True,
             # For quantization-aware finetuning, do backward pass in FP32
