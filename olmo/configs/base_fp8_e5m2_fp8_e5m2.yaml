@@ -1,4 +1,3 @@
-
 run_name: test-olmo-debug-precision
 seed: 0
 dry_run: false
@@ -43,8 +42,8 @@ model:
 
   # quantizations
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
-  w_mx_format: 'fp6_e2m3' #'bfloat16'
-  a_mx_format: 'fp6_e3m2' #'bfloat16'
+  w_mx_format: 'fp8_e5m2' #'bfloat16'
+  a_mx_format: 'fp8_e5m2' #'bfloat16'
 
 
 # TODO: add your own wandb information
@@ -52,7 +51,7 @@ wandb:
   name: ${model.w_mx_format}_${model.a_mx_format}
   log_interval: ${console_log_interval}
   entity: harvardml
-  project: test-precision-MX-fineweb
+  project: quantize-fwd-only-MX-fineweb
   group: debug
 
 # compile: null

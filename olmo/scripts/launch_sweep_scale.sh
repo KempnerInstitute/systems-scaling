@@ -8,8 +8,8 @@
 #SBATCH --time=71:30:00
 #SBATCH --mem=0		
 #SBATCH --account=kempner_sham_lab
-#SBATCH --partition=kempner_h100
-#SBATCH --array=1-56%1
+#SBATCH --partition=kempner_h100_priority
+#SBATCH --array=1-96%2
 #SBATCH --exclusive
 
 sleep $((RANDOM % 240))
@@ -17,8 +17,8 @@ sleep $((RANDOM % 240))
 
 # Custom environment
 source ~/.bashrc
-mamba deactivate
-mamba activate qat
+conda deactivate
+conda activate qat
 
 # sleep $(( SLURM_ARRAY_TASK_ID * 60 ))
 module load cuda/12.4.1-fasrc01 cudnn gcc/12.2.0-fasrc01
@@ -39,7 +39,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Everyone/mkwun/systems-scaling/olmo/ckpts"
+export CHECKPOINTS_PATH="/n/holylfs06/LABS/kempner_dev/Lab/mkwun/sys_scaling/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
