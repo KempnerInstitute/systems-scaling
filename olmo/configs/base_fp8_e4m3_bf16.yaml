@@ -44,6 +44,7 @@ model:
   # "float16”, “fp16”, “bfloat16”, “bf16”, “fp8_e5m2”, “fp8_e4m3”, “fp6_e3m2”, “fp6_e2m3”, "fp4_e2m1”, “fp4”, “int8”, “int4"
   w_mx_format: 'fp8_e4m3' #'bfloat16'
   a_mx_format: 'bfloat16' #'bfloat16'
+  block_size: 32
 
 
 # TODO: add your own wandb information
