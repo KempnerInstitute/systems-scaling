@@ -27,8 +27,7 @@ defaults:
 
 datasets:
   name: algebraic-stack
-  path: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv"
-  # path: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default"
+  path: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default"
   tokenizer_used: t5-base
 
 model:
