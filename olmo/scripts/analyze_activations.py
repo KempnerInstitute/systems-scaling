@@ -9,7 +9,7 @@ from olmo.config  import ModelConfig, ActivationType, BlockType, LayerNormType
 DEVICE            = 'cpu'          # 'cuda:2' if you like
 # BASE_DIR          = '/n/netscratch/sham_lab/Lab/chloe00/ckpts'
 # PATTERN           = 'float32_float32_*'
-BASE_DIR          = '/n/holylfs06/LABS/kempner_shared/Lab/nikhilanand/ckpts'
+BASE_DIR          = '/n/holylfs06/LABS//Lab//ckpts'
 PATTERN           = 'fp6_e2m3_fp6_e3m2_*'
 N_PER_BUCKET      = 1              # how many runs to keep from each bucket
 SMALL_MAX         = 5              # < SMALL_MAX+1  → “small”
