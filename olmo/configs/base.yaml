@@ -94,7 +94,6 @@ softmax_auxiliary_loss: true
 
 datasets:
   name: algebraic-stack
-  # paths: ${path.glob:/n/holyscratch01/kempner_fellows/Lab/data/c4-tokenized-llama/*/*.npy}
   paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv" 
   tokenizer_used: t5-base
   # paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default"  
