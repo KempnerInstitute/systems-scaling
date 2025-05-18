@@ -67,10 +67,10 @@ TMRC (Transformer Model Research Codebase) is a simple, explainable codebase to 
 - Step 2: Request compute resources. For example, on the Kempner AI cluster, to request an H100 80GB GPU run
 
   ```bash
-  salloc --partition=kempner_h100 --account=<fairshare account> --ntasks=1 --cpus-per-task=24 --mem=375G --gres=gpu:1  --time=00-07:00:00
+  salloc --partition={} --account=<fairshare account> --ntasks=1 --cpus-per-task=24 --mem=375G --gres=gpu:1  --time=00-07:00:00
   ```
 
-  If you are not using the Kempner AI cluster, you can run experiments on your local machine (if you have a GPU) or on cloud services like AWS, GCP, or Azure.  TMRC should automatically find the available GPU.  If there are no GPUs available, it will run on CPU (though this is not recommended, since training will be prohibitively slow for any reasonable model size).
+  TMRC should automatically find the available GPU.  If there are no GPUs available, it will run on CPU (though this is not recommended, since training will be prohibitively slow for any reasonable model size).
 
 - Step 3: Activate the Conda environment
 
