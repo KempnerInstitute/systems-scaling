@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=distributed_test
-#SBATCH --account=kempner_grads
+#SBATCH --account={}
 #SBATCH --partition=kempner_h100_priority
 #SBATCH --output %x_%j/output_%j.out
 #SBATCH --error %x_%j/error_%j.out

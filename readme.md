@@ -30,4 +30,16 @@ systems-scaling/
 │── configs/                  # Configuration files
 │── requirements.txt          # Dependencies
 │── README.md                 # Project documentation
-│── .gitignore                
+│── .gitignore            
+
+
+```bash
+    from olmo.eval.downstream import *
+    tokenizer = Tokenizer.from_file("olmo/tokenizers/allenai_eleuther-ai-gpt-neox-20b-pii-special.json")
+    for x in label_to_task_map.values():
+        print(x)
+        kwargs = {}
+        if isinstance(x, tuple):
+            x, kwargs = x
+        x(tokenizer=tokenizer, **kwargs)
+    ```
