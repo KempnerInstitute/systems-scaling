@@ -7,7 +7,7 @@ name = "tmrc"
 version = "0.1.0"
 description = "Transformer Model Research Codebase (TMRC)"
 authors = [
-{ name = "Research and Engineering at Kempner Institute", email = "kempner-research-engineering@g.harvard.edu" }
+{ name = "Research and Engineering", email = "@g.edu" }
 ]
 license = { file = "LICENSE" }
 classifiers = [
