@@ -92,7 +92,6 @@ softmax_auxiliary_loss: false
 
 datasets:
   name: fineweb-edu #algebraic-stack
-  # paths: ${path.glob:/n/holyscratch01/kempner_fellows/Lab/data/c4-tokenized-llama/*/*.npy}
   paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2-sapphire-low-resource/default" #"/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv" 
   tokenizer_used: llama2 #t5-base
   # paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default"  
