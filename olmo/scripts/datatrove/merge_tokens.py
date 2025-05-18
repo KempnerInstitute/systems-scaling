@@ -11,7 +11,6 @@ args = args.parse_args()
 DATASET_NAME = args.data_name
 FILE_SIZE = int(5e8)
 
-# DESTINATION = "/n/holyscratch01/kempner_fellows/Lab/data"
 DESTINATION = "/n/netscratch/kempner_fellows/data"
 
 
