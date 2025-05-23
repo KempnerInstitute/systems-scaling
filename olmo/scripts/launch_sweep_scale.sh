@@ -11,10 +11,10 @@
 #SBATCH --mem=0		
 
 #SBATCH --account=kempner_grads
-#SBATCH --partition=kempner_h100_priority
+#SBATCH --partition=kempner_h100
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
-#SBATCH --array=73-80
+#SBATCH --array=1
 
 #SBATCH --exclusive
 

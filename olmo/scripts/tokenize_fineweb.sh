@@ -1,6 +1,6 @@
 #! /bin/bash
 #SBATCH --job-name=tokenize-fineweb
-#SBATCH --output=/n/holylfs06/LABS/kempner_dev/Lab/nikhilanand/systems-scaling/olmo/logs/%A_%a.log
+#SBATCH --output=/n/holylfs06/LABS/Lab/nikhilanand/systems-scaling/olmo/logs/%A_%a.log
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH -c 112
@@ -50,4 +50,4 @@ done
 
 export RAY_ADDRESS="$RAY_HEAD_ADDR"
 
- tatm tokenize --tokenizer KoboldAI/llama2-tokenizer --output-dir /n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2/default /n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu
+ tatm tokenize --tokenizer KoboldAI/llama2-tokenizer --output-dir /n/holylfs06/LABS/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2/default /n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu

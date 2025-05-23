@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --job-name=tokenize
-#SBATCH --account=kempner_sham_lab
-#SBATCH --output=/n/holyscratch01/kempner_fellows/Lab/data/slurm_logs/%A_%a.log
+#SBATCH --account=<account>
+#SBATCH --output=/n/holyscratch01/Lab/data/slurm_logs/%A_%a.log
 #SBATCH --nodes=1             
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=1    
 #SBATCH --cpus-per-task=16
 #SBATCH --time=12:00:00
 #SBATCH --mem=250GB		
-#SBATCH --partition=kempner
+#SBATCH --partition=<partition>
 #SBATCH --array=0-0
 #SBATCH --exclude=holygpu8a15401,holygpu8a19103
 #SBATCH --spread-job

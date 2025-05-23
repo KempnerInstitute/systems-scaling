@@ -39,6 +39,7 @@ def build_downstream_evaluator(
         task_class = CE_loss_wrapper(task_class)
     elif eval_cfg.ctx_ce_wrapper:
         task_class = Context_CE_loss_wrapper(task_class)
+    print(tokenizer)
     ds_eval_dataset = task_class(tokenizer=tokenizer, **task_kwargs)  # type: ignore
     data_config = eval_cfg.data
     if is_unit_test:
@@ -115,10 +116,15 @@ def build_evaluator(
 
 def build_evaluators(cfg: TrainConfig, device: torch.device) -> List[Evaluator]:
     evaluators = []
-    tokenizer = Tokenizer.from_train_config(cfg)
-    try:
+    # tokenizer = Tokenizer.from_train_config(cfg)
+    # try:
+    #     tokenizer = Tokenizer.from_train_config(cfg)
+    # except:
+    #     tokenizer = None
+    cfg.use_tokenizer = False
+    if cfg.use_tokenizer:
         tokenizer = Tokenizer.from_train_config(cfg)
-    except:
+    else:
         tokenizer = None
    
     for eval_cfg in cfg.evaluators:
