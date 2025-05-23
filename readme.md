@@ -24,8 +24,6 @@ systems-scaling/
 │   ├── utils.py              # Utility functions
 │   ├── models/               # 
 │   └── __init__.py           
-│── tmrc/                # transformer training lib
-│   ├── main.py               #  script
 │── notebooks/                # Jupyter notebooks for analysis
 │── configs/                  # Configuration files
 │── requirements.txt          # Dependencies
