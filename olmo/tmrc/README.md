@@ -12,7 +12,7 @@ TMRC (Transformer Model Research Codebase) is a simple, explainable codebase to 
 
 - Step 1: Load required modules
 
-  If you are using the Kempner AI cluster, load required modules:
+  If you are using the cluster, load required modules:
 
   ```bash
   module load python/3.12.5-fasrc01
@@ -20,7 +20,7 @@ TMRC (Transformer Model Research Codebase) is a simple, explainable codebase to 
   module load cudnn/9.1.1.17_cuda12-fasrc01 
   ```
 
-  If you are not using the Kempner cluster, install torch and cuda dependencies following instructions on the [PyTorch website](https://pytorch.org). TMRC has been tested with torch `2.5.0+cu124` and Python `3.12`.
+  If you are not using the cluster, install torch and cuda dependencies following instructions on the [PyTorch website](https://pytorch.org). TMRC has been tested with torch `2.5.0+cu124` and Python `3.12`.
 
 - Step 2: Create a Conda environment
 
