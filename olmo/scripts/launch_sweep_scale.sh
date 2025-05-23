@@ -10,8 +10,8 @@
 #SBATCH --time=71:30:00
 #SBATCH --mem=0		
 
-#SBATCH --account=kempner_grads
-#SBATCH --partition=kempner_h100
+#SBATCH --account=<>
+#SBATCH --partition=<>
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
 #SBATCH --array=1
