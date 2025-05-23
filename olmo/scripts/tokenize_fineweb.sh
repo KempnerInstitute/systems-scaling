@@ -1,6 +1,6 @@
 #! /bin/bash
 #SBATCH --job-name=tokenize-fineweb
-#SBATCH --output=/n/holylfs06/LABS/Lab/nikhilanand/systems-scaling/olmo/logs/%A_%a.log
+#SBATCH --output=/n/holylfs06/LABS/Lab/<user>/systems-scaling/olmo/logs/%A_%a.log
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=1
 #SBATCH -c 112

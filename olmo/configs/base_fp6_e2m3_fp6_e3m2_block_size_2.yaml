@@ -139,7 +139,7 @@ evaluators:
   - label: fineweb
     data:
       datasets:
-        fineweb_nikhil_val: fineweb-nikhil-val
+        fineweb_val: fineweb-val
       drop_last: true
   # - label: fineweb
   #   data:
