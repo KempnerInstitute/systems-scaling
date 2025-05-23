@@ -31,15 +31,4 @@ We provide 5 notebooks to generate the figures in the paper.
 - `curve_fitting.ipynb` generates the scaling law plots from the appendix.
 - `theory/make_plots_clean.ipynb` generates the figures for the appendix on linear models.
 
-## Citation
 
-Please cite the following paper:
-
-```bibtex
-@article{brandfonbrener2024loss,
-      title={Loss-to-Loss Prediction: Scaling Laws for All Datasets}, 
-      author={Brandfonbrener, David and Anand, Nikhil and Vyas, Nikhil and Malach, Eran and Kakade, Sham},
-      journal={arXiv preprint arXiv:2411.12925},
-      year={2024}
-}
-```

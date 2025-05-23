@@ -32,14 +32,6 @@ Note: you will need to update paths to the data in `olmo/registry.py` and define
 
 If you use this code in your research, please cite the following papers:
 
-```bibtex
-@article{brandfonbrener2024loss,
-      title={Loss-to-Loss Prediction: Scaling Laws for All Datasets}, 
-      author={Brandfonbrener, David and Anand, Nikhil and Vyas, Nikhil and Malach, Eran and Kakade, Sham},
-      journal={arXiv preprint arXiv:2411.12925},
-      year={2024}
-}
-```
 
 ```bibtex
 @article{OLMo,
