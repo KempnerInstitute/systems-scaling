@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=test-olmo-run
 
-#SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/chloe00/systems-scaling/olmo/logs/%A_%a.log
+#SBATCH --output=/n/holylfs06/LABS/sham_lab/Users/<user>/systems-scaling/olmo/logs/%A_%a.log
 #SBATCH --nodes=4
 
 #SBATCH --ntasks-per-node=4
@@ -46,7 +46,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts"
+export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/{user}/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
