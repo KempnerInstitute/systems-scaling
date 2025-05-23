@@ -91,7 +91,7 @@ softmax_auxiliary_loss: false
 #   tokenizer_used: t5-base
 
 datasets:
-  name: fineweb-edu #algebraic-stack
+  name: fineweb-edu # algebraic-stack
   paths: "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2-sapphire-low-resource/default" 
   tokenizer_used: llama2 #t5-base
   # /meta-llama-3/default"  
