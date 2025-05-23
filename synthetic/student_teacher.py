@@ -682,7 +682,7 @@ def parse():
     p.add_argument("--out", default="eps_runs")
     p.add_argument("--wandb_project", default="mx_eps_dual_with_fp64_2")
     p.add_argument("--wandb_name", default=None)
-    p.add_argument("--save_root", type=str, default="/n/netscratch/kempner_dev/Lab/nikhilanand/eps_sweeps_depth_width")
+    p.add_argument("--save_root", type=str, default="/n/netscratch/Lab/{user}/eps_sweeps_depth_width")
     args = p.parse_args()
 
     args.save_root = pathlib.Path(args.save_root).expanduser()

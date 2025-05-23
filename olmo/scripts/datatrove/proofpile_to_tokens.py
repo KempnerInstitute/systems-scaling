@@ -16,7 +16,7 @@ N_TASKS_PER_NODE = int(os.environ.get("SLURM_CPUS_PER_TASK", 1))
 NODES = int(os.environ.get("SLURM_ARRAY_TASK_COUNT", 1))
 RANK = int(os.environ.get("SLURM_ARRAY_TASK_ID", 0))
 
-DESTINATION = "/n/netscratch/kempner_fellows/data"
+DESTINATION = "/n/netscratch/{}/data"
 
 print(f"Running with {N_TASKS_PER_NODE} tasks per node, {NODES} nodes, and rank {RANK}")
 
