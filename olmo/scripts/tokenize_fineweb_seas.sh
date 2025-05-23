@@ -50,4 +50,4 @@ done
 
 export RAY_ADDRESS="$RAY_HEAD_ADDR"
 
- tatm tokenize --tokenizer KoboldAI/llama2-tokenizer --output-dir /n/holylfs06/LABS/<>/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2-seas-compute/default /n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu
+ tatm tokenize --tokenizer KoboldAI/llama2-tokenizer --output-dir /n/holylfs06/LABS/<>/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2-seas-compute/default /n/holylfs06/LABS/<>/Everyone/testbed/text/fineweb-edu

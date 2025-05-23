@@ -10,8 +10,8 @@ DATA_DICT = {
     "fineweb-100b-val": f"{data_path_2}/fineweb-100B-val-merged",
     "c4": f"{data_path}/c4-tokenized-llama",
     "c4-val": f"{data_path}/c4-val-tokenized-llama",
-    "redpajama-val": f"/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv",
-    "fineweb": "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default",
+    "redpajama-val": f"/n/holylfs06/LABS/<>/Everyone/testbed/text/redpajama-v1/tokenized/t5-base/arxiv",
+    "fineweb": "/n/holylfs06/LABS/<>/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-3/default",
     "starcoder": f"{data_path}/dolma-starcoder-tokenized-llama",
     "starcoder-val": f"{data_path}/dolma-starcoder-val-tokenized-llama",
     "proof-pile-2": f"{data_path}/proof-pile-2",
@@ -23,7 +23,7 @@ DATA_DICT = {
     # Smollm: python -> 4B, fw -> 40B, owm -> 4B, cp2 -> 8B -> ~60B tokens
     "smollm-corpus": f"{data_path_2}/smollm-corpus",
     "smollm-corpus-val": f"{data_path_2}/smollm-corpus-val",
-    "fineweb-nikhil-val": "/n/holylfs06/LABS/kempner_shared/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2-sapphire-low-resource/val/",
+    "fineweb-nikhil-val": "/n/holylfs06/LABS/<>/Everyone/testbed/text/fineweb-edu/tokenized/meta-llama-2-sapphire-low-resource/val/",
 }
 
 
