@@ -7,7 +7,7 @@ name = "tmrc"
 version = "0.1.0"
 description = "Transformer Model Research Codebase (TMRC)"
 authors = [
-{ name = "Research and Engineering at Kempner Institute", email = "kempner-research-engineering@g.harvard.edu" }
+{ name = "", email = "" }
 ]
 license = { file = "LICENSE" }
 classifiers = [
@@ -17,7 +17,7 @@ classifiers = [
 ]
 dependencies = [
     "filelock==3.16.1",
-    "tatm @ git+https://github.com/KempnerInstitute/tatm.git@main",
+    "tatm @ git+https://github.com//tatm.git@main",
     "fsspec==2024.6.1",
     "jinja2==3.1.4",
     "markupsafe==2.1.5",
