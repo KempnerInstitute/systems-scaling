@@ -11,7 +11,7 @@ args = args.parse_args()
 DATASET_NAME = args.data_name
 FILE_SIZE = int(5e8)
 
-DESTINATION = "/n/netscratch/kempner_fellows/data"
+DESTINATION = "/n/netscratch/{}/data"
 
 
 # Remove unshuffled files (these are just empty/incomplete files if they exist)

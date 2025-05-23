@@ -24,7 +24,7 @@ systems-scaling/
 │   ├── utils.py              # Utility functions
 │   ├── models/               # 
 │   └── __init__.py           
-│── tmrc/                # Kempner transformer training lib
+│── tmrc/                # transformer training lib
 │   ├── main.py               #  script
 │── notebooks/                # Jupyter notebooks for analysis
 │── configs/                  # Configuration files

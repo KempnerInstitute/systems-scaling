@@ -6,7 +6,7 @@
 #SBATCH -c 64
 #SBATCH --time=48:30:00
 #SBATCH --mem-per-cpu=8192
-#SBATCH --account=kempner_dev
+#SBATCH --account=<account>
 #SBATCH --partition=sapphire
 
 module load python

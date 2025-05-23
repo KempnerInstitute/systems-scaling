@@ -4,9 +4,9 @@
 
 Code to train models that was used for the experiments on loss-to-loss prediction in the paper [Loss-to-loss prediction: scaling laws for all datasets](https://arxiv.org/abs/2411.12925).
 
-For data analysis and results see https://github.com/KempnerInstitute/loss-to-loss-notebooks.
+For data analysis and results see https://github.com//loss-to-loss-notebooks.
 
-For model checkpoints see https://huggingface.co/KempnerInstituteAI/loss-to-loss.
+For model checkpoints see https://huggingface.co//loss-to-loss.
 
 ## Installation
 
