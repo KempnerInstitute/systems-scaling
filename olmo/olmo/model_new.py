@@ -460,9 +460,9 @@ class OLMoBlock(nn.Module):
         #     bias=config.include_bias,
         #     # device=config.init_device,
         # )
-        self.ff_out = LinearDebiased(self.ff_out.in_features, 
-                                     self.ff_out.out_features, 
-                                     bias=self.ff_out.bias is not None
+        self.ff_out = LinearDebiased(int(self.act.output_multiplier * self.hidden_size), 
+                                     config.d_model,
+                                     bias=config.include_bias
                                      )
         self.ff_out._is_residual = True  # type: ignore
 
@@ -761,6 +761,7 @@ class OLMoLlamaBlock(OLMoBlock):
             q_proj_out_dim = config.d_model
             k_proj_out_dim = config.d_model
             v_proj_out_dim = config.d_model
+
         # self.q_proj = nn.Linear(
         #     config.d_model, q_proj_out_dim, bias=config.include_bias, # device=config.init_device
         # )
