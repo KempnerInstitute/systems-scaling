@@ -73,7 +73,7 @@ def custom_init(m):
 
 # ===================  (Experimental) Debiasing functions  =====================================
 # the below functions attempt to correct for STE bias in the backward pass
-# these are still WIP so it is recommened you ignore them (they are default ignored)
+# these are still WIP so it is recommended you ignore them (they are default ignored)
 # unless you set the --debias_MX_gradient flag
 
 class DebiasGate(Function):

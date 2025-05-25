@@ -32,21 +32,4 @@ Note: you will need to update paths to the data in `olmo/registry.py` and define
 
 If you use this code in your research, please cite the following papers:
 
-```bibtex
-@article{brandfonbrener2024loss,
-      title={Loss-to-Loss Prediction: Scaling Laws for All Datasets}, 
-      author={Brandfonbrener, David and Anand, Nikhil and Vyas, Nikhil and Malach, Eran and Kakade, Sham},
-      journal={arXiv preprint arXiv:2411.12925},
-      year={2024}
-}
-```
 
-```bibtex
-@article{OLMo,
-  title={OLMo: Accelerating the Science of Language Models},
-  author={Dirk Groeneveld and Iz Beltagy and Pete Walsh and Akshita Bhagia and Rodney Kinney and Oyvind Tafjord and A. Jha and Hamish Ivison and Ian Magnusson and Yizhong Wang and Shane Arora and David Atkinson and Russell Authur and Khyathi Raghavi Chandu and Arman Cohan and Jennifer Dumas and Yanai Elazar and Yuling Gu and Jack Hessel and Tushar Khot and William Merrill and Jacob Daniel Morrison and Niklas Muennighoff and Aakanksha Naik and Crystal Nam and Matthew E. Peters and Valentina Pyatkin and Abhilasha Ravichander and Dustin Schwenk and Saurabh Shah and Will Smith and Emma Strubell and Nishant Subramani and Mitchell Wortsman and Pradeep Dasigi and Nathan Lambert and Kyle Richardson and Luke Zettlemoyer and Jesse Dodge and Kyle Lo and Luca Soldaini and Noah A. Smith and Hanna Hajishirzi},
-  year={2024},
-  url={https://api.semanticscholar.org/CorpusID:267365485},
-  journal={arXiv preprint},
-}
-```

@@ -64,6 +64,7 @@ class Tokenizer:
     @classmethod
     def from_train_config(cls, config: TrainConfig) -> Tokenizer:
         tokenizer_identifier = config.tokenizer.identifier
+        
         if Path(tokenizer_identifier).is_file():
             tokenizer = cls.from_file(
                 tokenizer_identifier,
