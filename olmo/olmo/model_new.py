@@ -30,6 +30,8 @@ import torch.backends.cuda
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import einsum
+from torch.autograd import Function
+from torch import Tensor
 
 from .aliases import PathOrStr
 from .beam_search import BeamSearch, Constraint, FinalSequenceScorer, Sampler
@@ -55,7 +57,7 @@ else:
 
 from huggingface_hub import PyTorchModelHubMixin
 
-from synthetic.student_teacher import LinearDebiased
+# from ..synthetic.student_teacher import LinearDebiased, debias_act
 
 __all__ = [
     "LayerNormBase",
@@ -122,7 +124,56 @@ def _non_meta_init_device(config: ModelConfig) -> torch.device:
         return torch.device(config.init_device)
     else:
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
 
+class DebiasGate(Function):
+    @staticmethod
+    def forward(ctx, w: Tensor, g: Tensor) -> Tensor:
+        ctx.save_for_backward(w, g)
+        return w                    # identity forward
+
+    @staticmethod
+    def backward(ctx, grad_out: Tensor):
+        w, g = ctx.saved_tensors
+        # gradient wrt weight
+        grad_w = grad_out * g
+        # gradient wrt scalar g  =  ⟨grad_out , w⟩
+        grad_g = (grad_out * w).sum().unsqueeze(0)
+        return grad_w, grad_g
+
+class LinearDebiased(nn.Linear):
+    """
+    nn.Linear whose weight gradient is multiplied by a learnable scalar g.
+    Initialise g to (ln 2)**3 ≈ 0.333 for MX-quantised W⊗X layers.
+    """
+    def __init__(self, in_f, out_f, bias=True, init_g=(math.log(2)**3)):
+        super().__init__(in_f, out_f, bias=bias)
+        self.g = nn.Parameter(torch.tensor([init_g], dtype=self.weight.dtype))
+        
+
+    def forward(self, x):
+        w_eff = DebiasGate.apply(self.weight, self.g)
+        return F.linear(x, w_eff, self.bias)
+    
+class ActDebiasGate(Function):
+    """
+    Pass-through in the forward; scales the *incoming*
+    gradient by the scalar g_a in the backward.
+    """
+    @staticmethod
+    def forward(ctx, x: Tensor, g_a: Tensor) -> Tensor:
+        ctx.save_for_backward(g_a)
+        return x
+
+    @staticmethod
+    def backward(ctx, grad_out: Tensor):
+        (g_a,) = ctx.saved_tensors
+        return grad_out * g_a, None
+
+def debias_act(x: Tensor, g_a: nn.Parameter) -> Tensor:
+    # identical value, corrected gradient
+    return ActDebiasGate.apply(x, g_a)
+    
 
 class Dropout(nn.Dropout):
     def forward(self, input: torch.Tensor) -> torch.Tensor:
@@ -670,6 +721,8 @@ class OLMoSequentialBlock(OLMoBlock):
         # )
         self.ff_proj = LinearDebiased(config.d_model, self.hidden_size, bias=config.include_bias)
 
+        self.g_a = nn.Parameter(torch.tensor([math.log(2.0)]))
+
     def reset_parameters(self):
         super().reset_parameters()
         self.attn_norm.reset_parameters()
@@ -730,6 +783,7 @@ class OLMoSequentialBlock(OLMoBlock):
             x = self._activation_checkpoint_fn(self.act, x)  # type: ignore
         else:
             x = self.act(x)
+        x = debias_act(x, self.g_a)
         x = self.ff_out(x)
         x = self.dropout(x)
         x = og_x + x
@@ -780,6 +834,8 @@ class OLMoLlamaBlock(OLMoBlock):
         #     config.d_model, self.hidden_size, bias=config.include_bias, # device=config.init_device
         # )
         self.ff_proj = LinearDebiased(config.d_model, self.hidden_size, bias=config.include_bias)
+
+        self.g_a = nn.Parameter(torch.tensor([math.log(2.0)]))
 
     def reset_parameters(self):
         super().reset_parameters()
@@ -858,6 +914,7 @@ class OLMoLlamaBlock(OLMoBlock):
             x = self._activation_checkpoint_fn(self.act, x)  # type: ignore
         else:
             x = self.act(x)
+        x = debias_act(x, self.g_a)
         x = self.ff_out(x)
         x = self.dropout(x)
         x = og_x + x
