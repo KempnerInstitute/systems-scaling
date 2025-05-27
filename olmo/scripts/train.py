@@ -49,18 +49,18 @@ def build_models(cfg: TrainConfig):
     # Initialize the model.
     log.info("Building model...")
 
-    ## MXFP8_e5m2 matmuls with bfloat16 vector ops
-    # mx_specs = {
-    #         'scale_bits': 8,
-    #         'w_elem_format': cfg.model.w_mx_format,
-    #         'a_elem_format': cfg.model.a_mx_format,
-    #         'block_size': int(cfg.model.block_size),
-    #         'bfloat': 16,
-    #         'custom_cuda': True,
-    #         'quantize_backprop': True, # For quantization-aware finetuning, do backward pass in FP32
-    #     }
-    # mx_specs = finalize_mx_specs(mx_specs)
-    # mx_mapping.inject_pyt_ops(mx_specs)
+    # MXFP8_e5m2 matmuls with bfloat16 vector ops
+    mx_specs = {
+            'scale_bits': 8,
+            'w_elem_format': cfg.model.w_mx_format,
+            'a_elem_format': cfg.model.a_mx_format,
+            'block_size': int(cfg.model.block_size),
+            'bfloat': 16,
+            'custom_cuda': True,
+            'quantize_backprop': True, # For quantization-aware finetuning, do backward pass in FP32
+        }
+    mx_specs = finalize_mx_specs(mx_specs)
+    mx_mapping.inject_pyt_ops(mx_specs)
 
     olmo_model = OLMo(cfg.model)
     log.info(f"Total number of parameters: {olmo_model.num_params():,d}")

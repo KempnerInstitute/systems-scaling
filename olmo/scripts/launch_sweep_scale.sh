@@ -14,7 +14,7 @@
 #SBATCH --partition=kempner_h100
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
-#SBATCH --array=1
+#SBATCH --array=41
 
 #SBATCH --exclusive
 
@@ -46,7 +46,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts"
+export CHECKPOINTS_PATH="/n/netscratch/sham_lab/Lab/chloe00/ckpts_debias"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
