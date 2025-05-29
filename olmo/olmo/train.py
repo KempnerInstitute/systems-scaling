@@ -95,6 +95,17 @@ class LRMonitor:
     def check(self) -> Dict[str, float]:
         lrs = [group["lr"] for group in self.optim.param_groups]
         return {f"optim/learning_rate_group{idx}": lr for idx, lr in enumerate(lrs)}
+    
+
+def save_instability_tensors(tensor, export_dir, global_step, blk_idx, name, step_threshold_min, step_threshold_max):
+    """
+    A useful helper function to call around when you have an instability to save stuff. It saves things when global
+    train step is between step_threshold_min and step_threshold_max.
+    """
+    if global_step >= step_threshold_min and global_step <= step_threshold_max:
+        torch.save(tensor, export_dir/f"step{global_step:05d}_blk{blk_idx:02d}_{name}.pt" )
+    else:
+        pass
 
 
 def cross_entropy_loss(
