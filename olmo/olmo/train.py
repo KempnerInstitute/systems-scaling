@@ -760,12 +760,12 @@ class Trainer:
                 z = x
                 input_after_layernorm_if_ln = []
                 hs = []
-                for blk_idx, blk in enumerate(model.layers):
+                for blk_idx, blk in enumerate(self.fsdp_model.layers):
                     x_in = z
 
                     save_instability_tensors(x_in, export_dir, global_step, blk_idx, "input", 12650, 12800)
 
-                    z_norm = blk.ln(x_in) if not args.no_ln else x_in
+                    z_norm = blk.ln(x_in) if not self.cfg.no_ln else x_in
 
                     save_instability_tensors(z_norm, export_dir, global_step, blk_idx, "postLN", 12650, 12800)
 
@@ -822,9 +822,9 @@ class Trainer:
 
 
                     # log how much of gamma and beta are being clipped
-                    c_gamma, t_gamma = count_clipped_values(gamma, 32, args.elem_format)
+                    c_gamma, t_gamma = count_clipped_values(gamma, 32, self.cfg.elem_format)
                     wandb.log({f"clipW/ln{blk_idx}_gamma_clipped_frac": c_gamma / t_gamma}, step=global_step)
-                    c_beta, t_beta = count_clipped_values(beta, 32, args.elem_format)
+                    c_beta, t_beta = count_clipped_values(beta, 32, self.cfg.elem_format)
                     wandb.log({f"clipW/ln{blk_idx}_beta_clipped_frac": c_beta / t_beta}, step=global_step)
 
                 if elems_total_h:
