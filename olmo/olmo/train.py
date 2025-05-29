@@ -696,6 +696,95 @@ class Trainer:
             # Run backward pass.
             loss.backward()
 
+        
+        if self.cfg.log_weight_clipping:
+            clipped_total_h, elems_total_h = 0, 0
+            clipped_total_layer, elems_total_layer = 0, 0
+            with torch.no_grad():
+                z = x
+                input_after_layernorm_if_ln = []
+                hs = []
+                for blk_idx, blk in enumerate(model.layers):
+                    x_in = z
+
+                    save_instability_tensors(x_in, export_dir, global_step, blk_idx, "input", 12650, 12800)
+
+                    z_norm = blk.ln(x_in) if not args.no_ln else x_in
+
+                    save_instability_tensors(z_norm, export_dir, global_step, blk_idx, "postLN", 12650, 12800)
+
+                    input_after_layernorm_if_ln.append(z_norm)
+
+                    a1 = blk.fc1(z_norm)
+                    h  = blk.act_fn(a1)              # current block activation
+
+                    save_instability_tensors(h, export_dir, global_step, blk_idx, "hidden", 12650, 12800)
+
+
+                    hs.append(h)
+
+                    W2 = blk.fc2.weight              # (d_out , d)
+                    proj = torch.matmul(W2, h.T).abs()   # (d_out , B)
+                    numer = proj.mean(dim=1)             # (d_out,)
+                    w_norm = (W2 ** 2).sum(dim=1, keepdim=True).sqrt()      # (d_out , 1)
+                    h_norm = (h  ** 2).sum(dim=1, keepdim=True).sqrt().T    # (1      , B)
+                    denom  = (w_norm * h_norm).mean(dim=1) + 1e-12        
+                    align  = (numer / denom.squeeze()).mean()   # scalar
+                    wandb.log({f"align/blk{blk_idx}": align.item()}, step=global_step)
+
+                    # hidden state:
+                    c_h, t_h = count_clipped_values(h, 32, args.elem_format)
+                    wandb.log({f"ClipAct/blk{blk_idx}_hidden_clipped_frac": c_h / t_h}, step=global_step)
+                    clipped_total_h += c_h;  elems_total_h += t_h
+
+                    wandb.log({f"act/mean_hid{blk_idx}": h.mean().item(),
+                            f"act/var_hid{blk_idx}":  h.var(unbiased=False).item()}, step=global_step)
+
+                    # layer output after adding to residual stream
+                    z_blk = blk.fc2(h) + x_in
+                    c_z, t_z = count_clipped_values(z_blk, 32, args.elem_format)
+                    wandb.log({f"ClipAct/blk{blk_idx}_output_clipped_frac": c_z / t_z}, step=global_step)
+                    clipped_total_layer += c_z;  elems_total_layer += t_z
+
+                    
+                    z = z_blk               # proceed to next block
+
+                    # log layernorm data
+                    gamma = blk.ln.weight.data.detach().cpu()
+                    beta  = blk.ln.bias.data.detach().cpu()
+
+                    wandb.log({
+                        f"act/ln{blk_idx}_gamma_mean": gamma.mean().item(),
+                        f"act/ln{blk_idx}_gamma_var":  gamma.var().item(),
+                        f"act/ln{blk_idx}_beta_mean":  beta.mean().item(),
+                        f"act/ln{blk_idx}_beta_var":   beta.var().item(),
+                    }, step=global_step)
+
+                    # if global set if > 12650 and < 12800, save activaitons and gamma and beta
+                    save_instability_tensors(gamma, export_dir, global_step, blk_idx, "gamma", 12650, 12800)
+                    save_instability_tensors(beta, export_dir, global_step, blk_idx, "beta", 12650, 12800)
+
+
+                    # log how much of gamma and beta are being clipped
+                    c_gamma, t_gamma = count_clipped_values(gamma, 32, args.elem_format)
+                    wandb.log({f"clipW/ln{blk_idx}_gamma_clipped_frac": c_gamma / t_gamma}, step=global_step)
+                    c_beta, t_beta = count_clipped_values(beta, 32, args.elem_format)
+                    wandb.log({f"clipW/ln{blk_idx}_beta_clipped_frac": c_beta / t_beta}, step=global_step)
+
+                if elems_total_h:
+                    wandb.log({"ClipAct/total_frac_hidden_all_layers": clipped_total_h / elems_total_h}, step=global_step)
+                if elems_total_layer:
+                    wandb.log({"ClipAct/total_frac_layer_all_layers": clipped_total_layer / elems_total_layer}, step=global_step)
+                
+                for k,a in enumerate(input_after_layernorm_if_ln):
+                    wandb.log({f"act/mean_layer{k}_input_after_ln": a.mean().item(),
+                            f"act/var_layer{k}_input_after_ln":  a.var(unbiased=False).item()}, step=global_step)
+                    
+
+            model.train()
+
+
+
         return ce_batch_loss, z_batch_loss
 
     def optim_step(self, should_log_metrics: bool = False):

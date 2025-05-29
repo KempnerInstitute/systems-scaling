@@ -637,6 +637,11 @@ def get_param_groups(cfg: TrainConfig, model: nn.Module) -> List[Dict[str, Any]]
                     no_decay.add(fpn)
             elif pn.endswith("weight") and isinstance(m, nn.Linear):
                 decay.add(fpn)
+
+            # 
+            # elif pn.endswith("weight") and isinstance(p, nn.Parameter):
+            #     decay.add(fpn)
+
             elif pn.endswith("weight") and isinstance(m, (LayerNormBase, nn.LayerNorm)):
                 if cfg.optimizer.decay_norm_and_bias:
                     decay.add(fpn)
@@ -653,13 +658,20 @@ def get_param_groups(cfg: TrainConfig, model: nn.Module) -> List[Dict[str, Any]]
             elif pn.endswith("g_a") or pn.endswith("g"):
                 no_decay.add(fpn)
     # Validate that we've considered every parameter
+    print('decay', len(decay))
+    print('no_decay', len(no_decay))
     inter_params = decay & no_decay
     union_params = decay | no_decay
     assert len(inter_params) == 0, f"parameters {inter_params} made it into both decay/no_decay sets!"
 
     for param in all_params.keys() - union_params:
         print(all_params[param].__class__)
-    print(len(all_params.keys() - union_params))
+    # print(len(all_params.keys() - union_params))
+
+    for key in all_params.keys() - union_params:
+        print(f"{key}: {type(all_params[key])}")
+        print(isinstance(all_params[key], nn.Parameter))
+
     assert (
         len(all_params.keys() - union_params) == 0
     ), f"parameters {all_params.keys() - union_params} were not separated into either decay/no_decay set!"

@@ -14,7 +14,7 @@
 #SBATCH --partition=kempner_h100
 #SBATCH --mail-user=csu@g.harvard.edu
 #SBATCH --mail-type=END
-#SBATCH --array=41
+#SBATCH --array=1
 
 #SBATCH --exclusive
 

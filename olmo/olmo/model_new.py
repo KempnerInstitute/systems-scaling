@@ -140,6 +140,7 @@ class DebiasGate(Function):
         # gradient wrt scalar g  =  ⟨grad_out , w⟩
         grad_g = (grad_out * w).sum().unsqueeze(0)
         return grad_w, grad_g
+    
 
 class LinearDebiased(nn.Linear):
     """
@@ -154,6 +155,7 @@ class LinearDebiased(nn.Linear):
     def forward(self, x):
         w_eff = DebiasGate.apply(self.weight, self.g)
         return F.linear(x, w_eff, self.bias)
+    
     
 class ActDebiasGate(Function):
     """
@@ -715,6 +717,7 @@ class OLMoSequentialBlock(OLMoBlock):
         #     config.d_model, sum(self.fused_dims), bias=config.include_bias, # device=config.init_device
         # )
         self.att_proj = LinearDebiased(config.d_model, sum(self.fused_dims), bias=config.include_bias)
+
         # Feed-forward input projection.
         # self.ff_proj = nn.Linear(
         #     config.d_model, self.hidden_size, bias=config.include_bias, # device=config.init_device
@@ -816,18 +819,18 @@ class OLMoLlamaBlock(OLMoBlock):
             k_proj_out_dim = config.d_model
             v_proj_out_dim = config.d_model
 
-        # self.q_proj = nn.Linear(
-        #     config.d_model, q_proj_out_dim, bias=config.include_bias, # device=config.init_device
-        # )
-        self.q_proj = LinearDebiased(config.d_model, q_proj_out_dim, bias=config.include_bias)
-        # self.k_proj = nn.Linear(
-        #     config.d_model, k_proj_out_dim, bias=config.include_bias, # device=config.init_device
-        # )
-        self.k_proj = LinearDebiased(config.d_model, k_proj_out_dim, bias=config.include_bias)
-        # self.v_proj = nn.Linear(
-        #     config.d_model, v_proj_out_dim, bias=config.include_bias, # device=config.init_device
-        # )
-        self.v_proj = LinearDebiased(config.d_model, v_proj_out_dim, bias=config.include_bias)
+        self.q_proj = nn.Linear(
+            config.d_model, q_proj_out_dim, bias=config.include_bias, # device=config.init_device
+        )
+        # self.q_proj = LinearDebiased(config.d_model, q_proj_out_dim, bias=config.include_bias)
+        self.k_proj = nn.Linear(
+            config.d_model, k_proj_out_dim, bias=config.include_bias, # device=config.init_device
+        )
+        # self.k_proj = LinearDebiased(config.d_model, k_proj_out_dim, bias=config.include_bias)
+        self.v_proj = nn.Linear(
+            config.d_model, v_proj_out_dim, bias=config.include_bias, # device=config.init_device
+        )
+        # self.v_proj = LinearDebiased(config.d_model, v_proj_out_dim, bias=config.include_bias)
 
         # Feed-forward input projection.
         # self.ff_proj = nn.Linear(

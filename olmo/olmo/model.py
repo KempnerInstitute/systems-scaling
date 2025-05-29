@@ -74,6 +74,50 @@ __all__ = [
 
 log = logging.getLogger(__name__)
 
+FORMAT_META = {
+    "fp8_e4m3": dict(emax=8,   max_normal=448.0),   # 1111 110₂ × 2⁸ × 1.75
+    "fp8_e5m2": dict(emax=15,  max_normal=57344.0),
+    "fp6_e3m2": dict(emax=7,   max_normal=224.0),
+    "fp4_e2m1": dict(emax=3,   max_normal=6.0),
+}
+
+def fmt_meta(fmt):
+    if fmt not in FORMAT_META:
+        raise ValueError(f"unknown MX format {fmt}")
+    return FORMAT_META[fmt]["emax"], FORMAT_META[fmt]["max_normal"]
+
+
+def count_clipped_values(t: torch.Tensor,
+                         block_size: int,
+                         fmt: str
+) -> tuple[int, int]:
+    """
+    Return (#clipped, #total) for a tensor that would be quantised
+    MX block-wise with format `fmt`.
+    """
+    emax, vmax = fmt_meta(fmt)           # vmax = max representable after scaling
+    flat = t.detach().abs().view(-1, block_size)   #   (n_blocks, block_size)
+    max_per_block = flat.max(dim=1, keepdim=True).values
+    scales = 2.0 ** (torch.floor(torch.log2(max_per_block)) - emax)
+    clipped = (flat > vmax * scales).sum().item()
+    total   = flat.numel()
+    return clipped, total
+
+
+def count_clipped_values_fp32(
+    t: torch.Tensor,
+    block_size: int = None,   # unused for fp32
+    fmt: str = "fp32"         # unused
+) -> tuple[int,int]:
+    """
+    Return (#clipped, #total) for a tensor in FP32,
+    i.e. outside ±FLT_MAX.
+    """
+    max_f32 = torch.finfo(torch.float32).max
+    clipped = (t.abs() > max_f32).sum().item()
+    total   = t.numel()
+    return clipped, total
+
 
 def activation_checkpoint_function(cfg: ModelConfig):
     preserve_rng_state = (

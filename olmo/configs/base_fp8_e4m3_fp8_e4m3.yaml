@@ -52,7 +52,7 @@ wandb:
   name: ${model.w_mx_format}_${model.a_mx_format}_${oc.env:SLURM_ARRAY_TASK_ID}
   log_interval: ${console_log_interval}
   entity: harvardml
-  project: test-precision-MX-fineweb-block-size-debias
+  project: test-precision-MX-fineweb-block-size
   group: debug
 
 # compile: null
