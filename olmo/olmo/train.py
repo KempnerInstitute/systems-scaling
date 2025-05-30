@@ -56,6 +56,10 @@ __all__ = ["SpeedMonitor", "LRMonitor", "Trainer"]
 
 log = logging.getLogger(__name__)
 
+import torch.serialization
+from torch.distributed._shard.sharded_tensor import api as sharded_tensor_api
+torch.serialization.add_safe_globals([sharded_tensor_api.ShardedTensor])
+
 
 @dataclass
 class SpeedMonitor:
@@ -753,91 +757,7 @@ class Trainer:
             loss.backward()
 
         
-        if self.cfg.log_weight_clipping:
-            clipped_total_h, elems_total_h = 0, 0
-            clipped_total_layer, elems_total_layer = 0, 0
-            with torch.no_grad():
-                z = x
-                input_after_layernorm_if_ln = []
-                hs = []
-                for blk_idx, blk in enumerate(self.fsdp_model.layers):
-                    x_in = z
-
-                    save_instability_tensors(x_in, export_dir, global_step, blk_idx, "input", 12650, 12800)
-
-                    z_norm = blk.ln(x_in) if not self.cfg.no_ln else x_in
-
-                    save_instability_tensors(z_norm, export_dir, global_step, blk_idx, "postLN", 12650, 12800)
-
-                    input_after_layernorm_if_ln.append(z_norm)
-
-                    a1 = blk.fc1(z_norm)
-                    h  = blk.act_fn(a1)              # current block activation
-
-                    save_instability_tensors(h, export_dir, global_step, blk_idx, "hidden", 12650, 12800)
-
-
-                    hs.append(h)
-
-                    W2 = blk.fc2.weight              # (d_out , d)
-                    proj = torch.matmul(W2, h.T).abs()   # (d_out , B)
-                    numer = proj.mean(dim=1)             # (d_out,)
-                    w_norm = (W2 ** 2).sum(dim=1, keepdim=True).sqrt()      # (d_out , 1)
-                    h_norm = (h  ** 2).sum(dim=1, keepdim=True).sqrt().T    # (1      , B)
-                    denom  = (w_norm * h_norm).mean(dim=1) + 1e-12        
-                    align  = (numer / denom.squeeze()).mean()   # scalar
-                    wandb.log({f"align/blk{blk_idx}": align.item()}, step=global_step)
-
-                    # hidden state:
-                    c_h, t_h = count_clipped_values(h, 32, self.cfg.elem_format)
-                    wandb.log({f"ClipAct/blk{blk_idx}_hidden_clipped_frac": c_h / t_h}, step=global_step)
-                    clipped_total_h += c_h;  elems_total_h += t_h
-
-                    wandb.log({f"act/mean_hid{blk_idx}": h.mean().item(),
-                            f"act/var_hid{blk_idx}":  h.var(unbiased=False).item()}, step=global_step)
-
-                    # layer output after adding to residual stream
-                    z_blk = blk.fc2(h) + x_in
-                    c_z, t_z = count_clipped_values(z_blk, 32, self.cfg.elem_format)
-                    wandb.log({f"ClipAct/blk{blk_idx}_output_clipped_frac": c_z / t_z}, step=global_step)
-                    clipped_total_layer += c_z;  elems_total_layer += t_z
-
-                    
-                    z = z_blk               # proceed to next block
-
-                    # log layernorm data
-                    gamma = blk.ln.weight.data.detach().cpu()
-                    beta  = blk.ln.bias.data.detach().cpu()
-
-                    wandb.log({
-                        f"act/ln{blk_idx}_gamma_mean": gamma.mean().item(),
-                        f"act/ln{blk_idx}_gamma_var":  gamma.var().item(),
-                        f"act/ln{blk_idx}_beta_mean":  beta.mean().item(),
-                        f"act/ln{blk_idx}_beta_var":   beta.var().item(),
-                    }, step=global_step)
-
-                    # if global set if > 12650 and < 12800, save activaitons and gamma and beta
-                    save_instability_tensors(gamma, export_dir, global_step, blk_idx, "gamma", 12650, 12800)
-                    save_instability_tensors(beta, export_dir, global_step, blk_idx, "beta", 12650, 12800)
-
-
-                    # log how much of gamma and beta are being clipped
-                    c_gamma, t_gamma = count_clipped_values(gamma, 32, self.cfg.elem_format)
-                    wandb.log({f"clipW/ln{blk_idx}_gamma_clipped_frac": c_gamma / t_gamma}, step=global_step)
-                    c_beta, t_beta = count_clipped_values(beta, 32, self.cfg.elem_format)
-                    wandb.log({f"clipW/ln{blk_idx}_beta_clipped_frac": c_beta / t_beta}, step=global_step)
-
-                if elems_total_h:
-                    wandb.log({"ClipAct/total_frac_hidden_all_layers": clipped_total_h / elems_total_h}, step=global_step)
-                if elems_total_layer:
-                    wandb.log({"ClipAct/total_frac_layer_all_layers": clipped_total_layer / elems_total_layer}, step=global_step)
-                
-                for k,a in enumerate(input_after_layernorm_if_ln):
-                    wandb.log({f"act/mean_layer{k}_input_after_ln": a.mean().item(),
-                            f"act/var_layer{k}_input_after_ln":  a.var(unbiased=False).item()}, step=global_step)
-                    
-
-            model.train()
+       
 
 
 
@@ -1330,6 +1250,138 @@ class Trainer:
 
                         # Reset model to 'train' mode.
                         self.fsdp_model.train()
+                    
+                    if self.cfg.log_weight_clipping and self.global_step % self.cfg.weight_clipping_log_interval == 0 and get_global_rank() == 0:
+                        log.info(f"Performing detailed weight/activation logging for global_step {self.global_step}...")
+                        with torch.no_grad():
+                            model_to_inspect = self.fsdp_model.module # Get the underlying OLMo model
+
+                            current_batch_input_ids = batch["input_ids"]
+                            #attention_mask = batch.get("attention_mask")
+
+                            x = model_to_inspect.transformer.wte(current_batch_input_ids)
+                            if hasattr(model_to_inspect.transformer, "wpe") and model_to_inspect.transformer.wpe is not None:
+                                seq_len_dim = current_batch_input_ids.size(1) # Renamed to avoid conflict
+                                pos_ids = torch.arange(seq_len_dim, device=current_batch_input_ids.device).unsqueeze(0)
+                                x = x + model_to_inspect.transformer.wpe(pos_ids)
+                            if hasattr(model_to_inspect.transformer, 'emb_drop') and model_to_inspect.transformer.emb_drop is not None:
+                                x = model_to_inspect.transformer.emb_drop(x)
+
+                            export_dir = Path(self.cfg.save_folder) / "instability_tensors"
+                            export_dir.mkdir(parents=True, exist_ok=True)
+
+                            clipped_total_h_accum, elems_total_h_accum = 0, 0
+                            clipped_total_layer_accum, elems_total_layer_accum = 0, 0
+                            all_input_after_mlp_layernorm = []
+
+                            current_block_input = x
+
+                            # Corrected iteration over blocks:
+                            all_transformer_blocks = []
+                            if model_to_inspect.config.block_group_size == 1:
+                                all_transformer_blocks = list(model_to_inspect.transformer.blocks)
+                            else:
+                                for group in model_to_inspect.transformer.block_groups:
+                                    for block_in_group in group: # OLMoBlockGroup is an nn.ModuleList of OLMoBlock
+                                        all_transformer_blocks.append(block_in_group)
+
+                            for blk_idx, blk in enumerate(all_transformer_blocks):
+                                # blk_idx is the global 0-indexed layer ID.
+                                # blk.layer_id should also be this global ID.
+                                assert blk_idx == blk.layer_id, f"Mismatch in block index: enumerated {blk_idx} vs blk.layer_id {blk.layer_id}"
+
+                                _x_attn_part = current_block_input
+                                if blk.attn_norm is not None: # OLMoSequentialBlock has attn_norm
+                                    normed_x_attn = blk.attn_norm(_x_attn_part)
+                                else:
+                                    normed_x_attn = _x_attn_part
+                                
+                                # Assuming blk is OLMoSequentialBlock for att_proj
+                                # For OLMoLlamaBlock, q,k,v projections are separate (q_proj, k_proj, v_proj)
+                                if hasattr(blk, 'att_proj'): # OLMoSequentialBlock
+                                    qkv = blk.att_proj(normed_x_attn)
+                                    q, k, v = qkv.split(blk.fused_dims, dim=-1)
+                                elif hasattr(blk, 'q_proj'): # OLMoLlamaBlock
+                                    q = blk.q_proj(normed_x_attn)
+                                    k = blk.k_proj(normed_x_attn)
+                                    v = blk.v_proj(normed_x_attn)
+                                else:
+                                    raise NotImplementedError(f"Block type {type(blk)} not fully handled for QKV projection in logging.")
+
+                                attn_output, _, _ = blk.attention( # Call OLMoBlock's attention method
+                                    q, k, v, # Pass q,k,v directly
+                                    attention_bias=None, # Simplified for this forward pass, actual attention_bias is complex
+                                    use_cache=False
+                                )
+                                mlp_part_input = _x_attn_part + attn_output
+                                save_instability_tensors(mlp_part_input, export_dir, self.global_step, blk_idx, "input_to_mlp", self.cfg.weight_clip_threshold_min, self.cfg.weight_clip_threshold_max)
+
+                                
+                                # OLMoSequentialBlock always has ff_norm (ff layernorm). We'll assume it's used.
+
+                                z_norm = blk.ff_norm(mlp_part_input) # Use blk.ff_norm for MLP LayerNorm
+
+                                save_instability_tensors(z_norm, export_dir, self.global_step, blk_idx, "postMLPNorm", self.cfg.weight_clip_threshold_min, self.cfg.weight_clip_threshold_max)
+                                all_input_after_mlp_layernorm.append(z_norm)
+
+                                # Log gamma/beta for blk.ff_norm (MLP norm)
+                                if hasattr(blk.ff_norm, 'weight') and blk.ff_norm.weight is not None:
+                                    gamma = blk.ff_norm.weight.data.detach().cpu()
+                                    c_gamma, t_gamma = count_clipped_values(gamma, 32, self.cfg.elem_format)
+                                    wandb.log({f"clipW/mlp_ff_norm{blk_idx}_gamma_clipped_frac": (c_gamma / t_gamma) if t_gamma > 0 else 0.0}, step=self.global_step)
+                                    wandb.log({f"act/mlp_ff_norm{blk_idx}_gamma_mean": gamma.mean().item(), f"act/mlp_ff_norm{blk_idx}_gamma_var":  gamma.var(unbiased=False).item()}, step=self.global_step)
+                                    save_instability_tensors(gamma, export_dir, self.global_step, blk_idx, "gamma_ff_norm", self.cfg.weight_clip_threshold_min, self.cfg.weight_clip_threshold_max)
+                                if hasattr(blk.ff_norm, 'bias') and blk.ff_norm.bias is not None:
+                                    beta = blk.ff_norm.bias.data.detach().cpu()
+                                    c_beta, t_beta = count_clipped_values(beta, 32, self.cfg.elem_format)
+                                    wandb.log({f"clipW/mlp_ff_norm{blk_idx}_beta_clipped_frac": (c_beta / t_beta) if t_beta > 0 else 0.0}, step=self.global_step)
+                                    wandb.log({f"act/mlp_ff_norm{blk_idx}_beta_mean":  beta.mean().item(), f"act/mlp_ff_norm{blk_idx}_beta_var":   beta.var(unbiased=False).item()}, step=self.global_step)
+                                    save_instability_tensors(beta, export_dir, self.global_step, blk_idx, "beta_ff_norm", self.cfg.weight_clip_threshold_min, self.cfg.weight_clip_threshold_max)
+
+                                a1 = blk.ff_proj(z_norm)  # Use blk.ff_proj for MLP up-projection
+                                h_act = blk.act(a1)      # Use blk.act for MLP activation (renamed to h_act)
+                                save_instability_tensors(h_act, export_dir, self.global_step, blk_idx, "hidden_mlp_act", self.cfg.weight_clip_threshold_min, self.cfg.weight_clip_threshold_max)
+
+                                c_h, t_h = count_clipped_values(h_act, 32, self.cfg.elem_format)
+                                wandb.log({f"ClipAct/blk{blk_idx}_hidden_mlp_act_clipped_frac": (c_h / t_h) if t_h > 0 else 0.0}, step=self.global_step)
+                                clipped_total_h_accum += c_h;  elems_total_h_accum += t_h
+                                wandb.log({f"act/mean_hid_mlp_act{blk_idx}": h_act.mean().item(),
+                                        f"act/var_hid_mlp_act{blk_idx}":  h_act.var(unbiased=False).item()}, step=self.global_step)
+
+                                W2 = blk.ff_out.weight # Use blk.ff_out.weight for MLP down-projection weights
+                                # Reshape h_act for matmul if it's 3D (B, S, D) -> (B*S, D)
+                                # W2 is (d_model, d_ff), h_act.T should be (d_ff, B*S)
+                                h_act_for_matmul = h_act.view(-1, h_act.size(-1)) if h_act.ndim == 3 else h_act
+                                proj = torch.matmul(W2, h_act_for_matmul.T).abs() # h_act_for_matmul.T is (d_ff, B*S)
+                                numer = proj.mean(dim=1) # (d_model,)
+                                
+                                w_norm = (W2 ** 2).sum(dim=1, keepdim=True).sqrt()      # (d_model, 1)
+                                h_act_norm_val = (h_act_for_matmul  ** 2).sum(dim=1, keepdim=True).sqrt().T    # (1, B*S)
+                                denom  = (w_norm * h_act_norm_val.mean(dim=1, keepdim=True)) # Broadcasting (d_model,1) * (1,1) -> (d_model,1)
+                                denom = denom.squeeze() + 1e-12 # (d_model,)
+                                align  = (numer / denom).mean()   # scalar
+                                wandb.log({f"align/blk{blk_idx}_mlp": align.item()}, step=self.global_step)
+
+                                output_of_mlp_fc2 = blk.ff_out(h_act) # Use blk.ff_out for MLP down-projection
+                                
+                                mlp_part_output_with_residual = mlp_part_input + output_of_mlp_fc2
+
+                                c_z, t_z = count_clipped_values(mlp_part_output_with_residual, 32, self.cfg.elem_format)
+                                wandb.log({f"ClipAct/blk{blk_idx}_mlp_output_res_clipped_frac": (c_z / t_z) if t_z > 0 else 0.0}, step=self.global_step)
+                                clipped_total_layer_accum += c_z;  elems_total_layer_accum += t_z
+                                
+                                current_block_input = mlp_part_output_with_residual
+                            # End of loop over blocks
+
+                            if elems_total_h_accum > 0:
+                                wandb.log({"ClipAct/total_frac_hidden_mlp_act_all_layers": clipped_total_h_accum / elems_total_h_accum}, step=self.global_step)
+                            if elems_total_layer_accum > 0:
+                                wandb.log({"ClipAct/total_frac_mlp_output_res_all_layers": clipped_total_layer_accum / elems_total_layer_accum}, step=self.global_step)
+                            
+                            for k_idx, act_val in enumerate(all_input_after_mlp_layernorm):
+                                wandb.log({f"act/mean_layer{k_idx}_input_after_mlp_ln": act_val.mean().item(),
+                                        f"act/var_layer{k_idx}_input_after_mlp_ln":  act_val.var(unbiased=False).item()}, step=self.global_step)
+                        log.info(f"Detailed weight/activation logging for global_step {self.global_step} complete.")
 
                     # End of batch.
                     first_batch = False
