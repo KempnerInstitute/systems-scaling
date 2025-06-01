@@ -52,6 +52,11 @@ from .torch_util import (
 )
 from .util import upload
 
+
+import torch.distributed as dist
+from collections import defaultdict
+
+
 __all__ = ["SpeedMonitor", "LRMonitor", "Trainer"]
 
 log = logging.getLogger(__name__)
@@ -104,6 +109,7 @@ def count_clipped_values(t: torch.Tensor,
     Return (#clipped, #total) for a tensor that would be quantised
     MX block-wise with format `fmt`.
     """
+    block_size = int(block_size)
     FORMAT_META = {
         "fp8_e4m3": dict(emax=8,   max_normal=448.0),   # 1111 110₂ × 2⁸ × 1.75
         "fp8_e5m2": dict(emax=15,  max_normal=57344.0),
@@ -237,6 +243,27 @@ class Trainer:
                 return loss, z_loss
 
             self.loss_fn = fused_loss_fn
+        
+        # for activation clipping stats: layer_idx -> [clipped, total]
+        self._act_clip_stats: Dict[int, List[int]] = defaultdict(lambda: [0, 0])
+        self._act_hooks: List[torch.utils.hooks.RemovableHandle] = []
+        # register hooks on each block.act
+        for blk_idx, blk in enumerate(self.model.transformer.blocks):
+            h = blk.act.register_forward_hook(
+                lambda _mod, _inp, out, i=blk_idx: self._record_act_clip(i, out)
+            )
+            self._act_hooks.append(h)
+    
+    def _record_act_clip(self, layer_idx: int, act: torch.Tensor):
+        # run on CPU to avoid GPU oOom.
+        bs = int(self.cfg.model.block_size)
+        clipped, total = count_clipped_values(
+            act.detach().cpu(),
+            bs,
+            self.cfg.model.a_mx_format,
+        )
+        self._act_clip_stats[layer_idx][0] += clipped
+        self._act_clip_stats[layer_idx][1] += total
 
     @property
     def dataset(self) -> IterableDataset:
@@ -773,6 +800,7 @@ class Trainer:
         """Collect metrics about layernorm weight clipping for MX quantization."""
         metrics = {}
         
+        
         # Only collect if we have MX formats configured
         if not hasattr(self.cfg.model, 'w_mx_format'):
             return metrics
@@ -782,27 +810,29 @@ class Trainer:
         block_size = 16  # Default block size for MX quantization
         
         # Iterate through all modules and find LayerNorm instances
-        for name, module in model.named_modules():
-            # Check if this is a LayerNorm module by its class name
-            if module.__class__.__name__ == 'LayerNorm':
-                for param_name, param in module.named_parameters():
-                    if 'weight' in param_name:
-                        try:
-                            clipped, total = count_clipped_values(
-                                param.data, 
-                                block_size, 
-                                self.cfg.model.w_mx_format
-                            )
-                            total_clipped += clipped
-                            total_weights += total
-                            
-                            # Log per-layer metrics for detailed analysis
-                            layer_clip_rate = clipped / total if total > 0 else 0.0
-                            metrics[f"layernorm_clipping/{name}.{param_name}_clip_rate"] = layer_clip_rate
-                            metrics[f"layernorm_clipping/{name}.{param_name}_clipped_count"] = clipped
-                            
-                        except Exception as e:
-                            log.warning(f"Failed to compute clipping metrics for {name}.{param_name}: {e}")
+        with FSDP.summon_full_params(self.fsdp_model, writeback=False, rank0_only=True):
+            if get_global_rank() == 0:
+                for name, module in self.fsdp_model.named_modules():
+                    # Check if this is a LayerNorm module by its class name
+                    if module.__class__.__name__ == 'LayerNorm':
+                        for param_name, param in module.named_parameters():
+                            if 'weight' in param_name:
+                                try:
+                                    clipped, total = count_clipped_values(
+                                        param.data, 
+                                        block_size, 
+                                        self.cfg.model.w_mx_format
+                                    )
+                                    total_clipped += clipped
+                                    total_weights += total
+                                    
+                                    # Log per-layer metrics for detailed analysis
+                                    layer_clip_rate = clipped / total if total > 0 else 0.0
+                                    metrics[f"layernorm_clipping/{name}.{param_name}_clip_rate"] = layer_clip_rate
+                                    metrics[f"layernorm_clipping/{name}.{param_name}_clipped_count"] = clipped
+                                    
+                                except Exception as e:
+                                    log.warning(f"Failed to compute clipping metrics for {name}.{param_name}: {e}")
         
         # Overall statistics
         if total_weights > 0:
@@ -842,7 +872,7 @@ class Trainer:
         should_log_optim_metrics_this_step = self.should_log_optim_metrics_this_step()
         optim_metrics = self.optim_step(should_log_metrics=should_log_optim_metrics_this_step)
 
-        if should_log_optim_metrics_this_step and get_global_rank() == 0:
+        if should_log_optim_metrics_this_step: # and get_global_rank() == 0:
             layernorm_metrics = self.collect_layernorm_clipping_metrics(self.fsdp_model)
             metrics.update(layernorm_metrics)
 
@@ -863,11 +893,29 @@ class Trainer:
 
         # Maybe collect post-step optimizer-specific metrics.
         if should_log_optim_metrics_this_step:
-            optim_metrics = self.optim.get_post_step_metrics(
-                self.fsdp_model, process_group=self.fsdp_model.process_group
-            )
-            for key, value in optim_metrics.items():
-                metrics[f"optim/{key}"] = value.item()
+            # 1) build per‐layer clipped & total lists
+            n_layers = self.cfg.model.n_layers
+            local_cl = [self._act_clip_stats.get(i, [0, 0])[0] for i in range(n_layers)]
+            local_tot = [self._act_clip_stats.get(i, [0, 0])[1] for i in range(n_layers)]
+            # 2) all‐reduce them across ranks
+            device = self.device
+            cl_tensor  = torch.tensor(local_cl, dtype=torch.long, device=device)
+            tot_tensor = torch.tensor(local_tot, dtype=torch.long, device=device)
+            dist.all_reduce(cl_tensor,  op=dist.ReduceOp.SUM, group=self.fsdp_model.process_group)
+            dist.all_reduce(tot_tensor, op=dist.ReduceOp.SUM, group=self.fsdp_model.process_group)
+            # 3) on rank0 convert to metrics
+            if dist.get_rank() == 0:
+                global_cl = cl_tensor.tolist()
+                global_tot = tot_tensor.tolist()
+                overall_cl = sum(global_cl)
+                overall_tot = sum(global_tot)
+                for i, (cl, tot) in enumerate(zip(global_cl, global_tot)):
+                    if tot > 0:
+                        metrics[f"act_clip/layer{i}"] = cl / tot
+                if overall_tot > 0:
+                    metrics["act_clip/overall"] = overall_cl / overall_tot
+            # 4) clear for next step
+            self._act_clip_stats.clear()
 
         return metrics
 
