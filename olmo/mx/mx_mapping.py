@@ -18,6 +18,8 @@ from .softmax import Softmax, softmax
 from .simd_ops import simd_add, simd_sub, simd_mul, simd_div, simd_exp, simd_log, simd_reduce_sum, simd_reduce_mean, \
     simd_norm, simd_square
 
+import inspect
+
 DEBUG = False
 
 torch_addmm = torch.addmm
@@ -31,7 +33,22 @@ def tracer_decorator(func, mx_specs):
             dtype = None
         if DEBUG:
             print(func.__name__, mx_specs)
-        res = func(*args, mx_specs=mx_specs, **kwargs)
+
+        # SPECIAL CASE FOR LAYERNOMR TO TRY TO GET NON ELEMENTWISE AFFINE TO WORK!
+        # YOU MIGHT NEED TO REMOVE THIS IF YOU WANT TO USE AFFINE LAYER NORM
+        #import torch.nn.functional as _F
+        #if func is _F.layer_norm:
+        #    out = func(*args, **kwargs)
+        #    return out.to(dtype) if dtype is not None else out
+        
+
+
+        # if func accepts mx_specs, forward it; otherwise drop it
+        sig = inspect.signature(func)
+        if "mx_specs" in sig.parameters:
+            res = func(*args, mx_specs=mx_specs, **kwargs)
+        else:
+            res = func(*args, **kwargs)
         if dtype is not None:
             res = res.to(dtype)
         return res

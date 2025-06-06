@@ -117,6 +117,8 @@ class MxSpecs(collections.UserDict):
             "vec_use_recip": False,
 
             "custom_cuda": False,
+
+            "bump_up_overflow_exponent": False,
         }
 
         self.help_strings = {

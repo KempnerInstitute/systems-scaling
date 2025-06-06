@@ -11,8 +11,10 @@ from .specs import apply_mx_specs, get_backwards_mx_specs
 from .specs import mx_assert_test
 from .norm_utils import _norm_forward, _norm_backward_LN, _norm_backward
 
+
 torch_layer_norm = F.layer_norm
 
+import torch
 
 class LayerNormFunction(torch.autograd.Function):
     @staticmethod
@@ -203,8 +205,46 @@ class RMSNorm(torch.nn.LayerNorm):
 def layer_norm(input, normalized_shape, weight, bias, eps=1e-12,
                mx_specs=None, name=None):
     mx_assert_test(mx_specs)
-    if mx_specs is None:
-        return torch_layer_norm(input, normalized_shape, weight, bias, eps)
+    #if mx_specs is None or weight is None: # modified to handle None weight (if elementwise affine is not used)
+    #    return torch_layer_norm(input, normalized_shape, weight, bias, eps)
+        #return F._layer_norm(input, normalized_shape, weight, bias, eps) # directly call C impl  ??
+        #return torch.nn.functional.layer_norm(input, normalized_shape, weight, bias, eps)
+    with torch.no_grad():
+        input_dtype = input.dtype
+        device = input.device
+            
+        # Cast to float32 for better numerical stability
+        x = input.to(torch.float32)
+        
+        # Calculate dimensions to normalize over
+        dims = tuple(-(i+1) for i in range(len(normalized_shape)))
+            
+        # Calculate mean
+        mean = x.mean(dims, keepdim=True)
+            
+        # Calculate variance with Bessel's correction
+        # Get the number of elements in the normalization dimensions
+        n = torch.tensor(1, dtype=torch.float32, device=device)
+        for d in dims:
+            n = n * x.size(d if d >= 0 else x.ndim + d)
+            
+        # Apply Bessel's correction (n/(n-1))
+        bessel_correction = n / (n - 1)
+        var = (x - mean).pow(2).mean(dims, keepdim=True) # * bessel_correction
+            
+        # Normalize
+        x_norm = (x - mean) / torch.sqrt(var + eps)
+            
+        # Apply affine transform if provided (weight should be None for this path)
+        if weight is not None:
+            x_norm = x_norm * weight.view(*(1,) * (input.ndim - weight.ndim), *weight.shape)
+        if bias is not None:
+            x_norm = x_norm + bias.view(*(1,) * (input.ndim - bias.ndim), *bias.shape)
+                
+        # Return with original dtype
+        return x_norm.to(input_dtype)
+    
     mx_specs = apply_mx_specs(mx_specs)
-    assert(normalized_shape == weight.shape)
+    if weight is not None:
+        assert(normalized_shape == weight.shape)
     return LayerNormFunction.apply(input, weight, bias, eps, mx_specs, name)
