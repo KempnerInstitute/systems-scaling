@@ -43,47 +43,73 @@ def vec_quantize(input, mx_specs=None, round=None):
 #-------------------------------------------------------------------------
 # Vec regular ops
 #-------------------------------------------------------------------------
-def vec_add(a, b, mx_specs=None, round=None):
+def vec_add(a, b, mx_specs=None, round=None, quantize=True):
     if b is None:
-        return quantize_elemwise_op(a, mx_specs=mx_specs,
-                                round=round)
+        if quantize:
+            return quantize_elemwise_op(a, mx_specs=mx_specs,
+                                    round=round)
+        else:
+            return a
     if a is None:
-        return quantize_elemwise_op(b, mx_specs=mx_specs,
+        if quantize:
+            return quantize_elemwise_op(b, mx_specs=mx_specs,
+                                    round=round)
+        else:
+            return b
+    
+    if quantize:
+        return quantize_elemwise_op(a + b, mx_specs=mx_specs,
+                                    round=round)
+    else:
+        return a + b
+
+
+def vec_sub(a, b, mx_specs=None, round=None, quantize=True):
+    if quantize:
+        return quantize_elemwise_op(a - b, mx_specs=mx_specs,
+                                    round=round)
+    else:
+        return a - b
+
+
+def vec_mul(a, b, mx_specs=None, round=None, quantize=True):
+    if quantize:
+        return quantize_elemwise_op(a * b, mx_specs=mx_specs,
                                 round=round)
-    return quantize_elemwise_op(a + b, mx_specs=mx_specs,
-                                round=round)
+    else:
+        return a * b
 
 
-def vec_sub(a, b, mx_specs=None, round=None):
-    return quantize_elemwise_op(a - b, mx_specs=mx_specs,
-                                round=round)
-
-
-def vec_mul(a, b, mx_specs=None, round=None):
-    return quantize_elemwise_op(a * b, mx_specs=mx_specs,
-                                round=round)
-
-
-def vec_div(a, b, mx_specs=None, round=None):
-    if mx_specs and mx_specs['vec_use_recip']:
+def vec_div(a, b, mx_specs=None, round=None, quantize=True):
+    if mx_specs and mx_specs['vec_use_recip'] and quantize:
         recip_b = vec_recip(b, mx_specs=mx_specs, round=round)
         return vec_mul(a, recip_b, mx_specs=mx_specs, round=round)
     else:
-        return quantize_elemwise_op(a / b, mx_specs=mx_specs,
-                                    round=round)
+        if quantize:
+            return quantize_elemwise_op(a / b, mx_specs=mx_specs,
+                                        round=round)
+        else:
+            return a / b
 
 
 #-------------------------------------------------------------------------
 # Vec special ops
 #-------------------------------------------------------------------------
-def vec_exp(input, mx_specs=None, round=None):
+def vec_exp(input, mx_specs=None, round=None, quantize=True):
     if mx_specs and mx_specs['vec_use_exp2']:
-        phi = quantize_elemwise_op(LOG2_E_BF16 * input,
-                                   mx_specs=mx_specs, round=round)
-        phi = vec_exp2(phi, mx_specs=mx_specs, round=round)
+        if quantize:
+            phi = quantize_elemwise_op(LOG2_E_BF16 * input,
+                                    mx_specs=mx_specs, round=round)
+            phi = vec_exp2(phi, mx_specs=mx_specs, round=round)
+        else:
+            phi = LOG2_E_BF16 * input
+            phi = torch_exp2(phi)
     else:
-        phi = quantize_elemwise_op(torch_exp(input),
-                                   mx_specs=mx_specs, round=round)
+        if quantize:
+            phi = quantize_elemwise_op(torch_exp(input),
+                                    mx_specs=mx_specs, round=round)
+        else:
+            phi = torch_exp(input)
     return phi
 
 
@@ -100,14 +126,20 @@ def vec_exp2(input, mx_specs=None, round=None):
     return phi
 
 
-def vec_recip(input, mx_specs=None, round=None):
-    return quantize_elemwise_op(1. / input, mx_specs=mx_specs,
-                                round=round)
+def vec_recip(input, mx_specs=None, round=None, quantize=True):
+    if quantize:
+        return quantize_elemwise_op(1. / input, mx_specs=mx_specs,
+                                    round=round)
+    else:
+        return 1. / input
 
 
-def vec_sqrt(input, mx_specs=None, round=None):
-    return quantize_elemwise_op(torch_sqrt(input), mx_specs=mx_specs,
-                                round=round)
+def vec_sqrt(input, mx_specs=None, round=None, quantize=True):
+    if quantize:
+        return quantize_elemwise_op(torch_sqrt(input), mx_specs=mx_specs,
+                                    round=round)
+    else:
+        return torch_sqrt(input)
 
 
 def vec_tanh(input, mx_specs=None, round=None):
@@ -119,18 +151,21 @@ def vec_tanh(input, mx_specs=None, round=None):
 # Vector reduce ops
 #-------------------------------------------------------------------------
 def vec_reduce_sum(input, dim, keepdim=False, mx_specs=None,
-                   round=None):
-    return quantize_elemwise_op(input.sum(dim, keepdim=keepdim),
+                   round=None, quantize=True):
+    if quantize:
+        return quantize_elemwise_op(input.sum(dim, keepdim=keepdim),
                                 mx_specs=mx_specs, round=round)
+    else:
+        return input.sum(dim, keepdim=keepdim)
 
 
 def vec_reduce_mean(input, dim, keepdim=False, mx_specs=None,
-                    round=None):
+                    round=None, quantize=True):
     # np.prod returns 1.0 for empty list
     dim = dim if type(dim) is list else [dim]
     denom = np.prod([input.shape[i] for i in dim])
 
     s = vec_reduce_sum(input, dim, keepdim=keepdim,
-                       mx_specs=mx_specs, round=round)
-    s = vec_div(s, denom, mx_specs=mx_specs, round=round)
+                       mx_specs=mx_specs, round=round, quantize=quantize)
+    s = vec_div(s, denom, mx_specs=mx_specs, round=round, quantize=quantize)
     return s
