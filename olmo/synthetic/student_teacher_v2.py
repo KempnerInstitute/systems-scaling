@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import argparse, pathlib, random, csv, time, yaml, math, warnings
 from contextlib import contextmanager
 from collections import defaultdict
@@ -10,7 +11,7 @@ from torch import Tensor
 
 import copy
 
-
+STORE_GRADS_EVERY = 5
 
 def set_seed(s):
     random.seed(s); np.random.seed(s); torch.manual_seed(s)
@@ -360,7 +361,7 @@ def make_mx_specs(args):
         "a_elem_format_bp_os":args.elem_format_bp_os,
         "block_size": 32,
         "scale_bits": args.scale_bits,
-        "custom_cuda": False, # true if not using bump_up_overflow_exponent
+        "custom_cuda": False, # IF YOU ARE RUNNING AN INTERVENTION EXPERIMENT OR APPLYING ANY MODIFICATIONS, LIKE BUMPED UP EXPONENT OR NON QUANTIZED LN, YOU SHOULD NOT SET THIS TO TRUE
         "quantize_backprop": True if not args.dont_quantize_backprop else False,
         "bfloat": 16,
         "bump_up_overflow_exponent": args.bump_up_overflow_exponent,
@@ -479,361 +480,290 @@ def save_instability_tensors(tensor, export_dir, global_step, blk_idx, name, ste
     else:
         pass
 
-# ===================  MAIN  ======================================
-def run_dual(args):
-    print("Setting seed")
-    set_seed(args.seed)
-    device = torch.device(args.device)
-    STORE_GRADS_EVERY = 5
-
-    e_max, v_max = fmt_meta(args.elem_format)
-
-    #make save_root
-    args.save_root.mkdir(parents=True, exist_ok=True)
-
-    # ---------- data & bookkeeping --------------------------------
-    loss_rec = {"fp32": {}, "mx": {}}
-    eps_rec  = {}                                       # NEW   step → tensor (cpu)
-    act_rec  = defaultdict(dict)                        # NEW   act_rec[layer][step] = (mean,var)
-    group_mean_fp32 = defaultdict(dict)
-    act_store = defaultdict(dict)
-    #group_mean_fp64 = defaultdict(dict)
 
 
-    # ------------------ dirs & wandb ------------------------------
-    cfg = vars(args)
-    tag, run_dir = build_tags(cfg, random_tag=True, save_root=args.save_root)
+# =================== TRAINING LOOPS FOR FP32 AND MX ================================
+
+# ────────────────────────────────────────────────────────────────────────────
+from dataclasses import dataclass, field
+
+@dataclass
+class LoopData:
+    args: argparse.Namespace
+    global_step: int = 0                     # shared WandB/x-axis counter
+
+    # ─── caches produced during FP32 phase ────────────────────────────────
+    g_fp32_mean: list = field(default_factory=list)           # scalar per step
+    g_fp32_norm: list = field(default_factory=list)           # scalar per step
+    group_mean_fp32: dict = field(default_factory=lambda: defaultdict(dict))
+    g32_store: dict = field(default_factory=dict)             # step → Tensor
+
+    # ─── records common to both phases ───────────────────────────────────
+    loss_rec: dict = field(default_factory=lambda: {"fp32": {}, "mx": {}})
+    eps_rec:  dict = field(default_factory=dict)
+
+    # convenience wrapper so we never forget the step kwarg
+    def log(self, metrics: dict):
+        wandb.log(metrics, step=self.global_step)
+
+
+def save_checkpoint(step,
+                    model,
+                    opt,
+                    sched,
+                    args,
+                    folder: pathlib.Path,
+                    mode="mx",
+                    ld: "LoopData | None" = None):
+    """
+    Save everything required to restart training **and** to compute
+    epsilon metrics later on.
+
+    If `ld` is provided we also store the FP-32 caches that live in it.
+    """
+    folder = pathlib.Path(folder); folder.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "global_step": step,
+        "model_state": model.state_dict(),
+        "opt_state":   opt.state_dict()   if opt   is not None else None,
+        "sched_state": sched.state_dict() if sched is not None else None,
+        "rng_state":   torch.get_rng_state(),
+        "cuda_rng":    torch.cuda.get_rng_state()
+                         if torch.cuda.is_available() else None,
+        "args":        vars(args),
+        "mode":        mode,
+    }
+
+    if ld is not None:               # ← NEW
+        payload.update({
+            "g_fp32_mean":     ld.g_fp32_mean,
+            "g_fp32_norm":     ld.g_fp32_norm,
+            "group_mean_fp32": dict(ld.group_mean_fp32),   # defaultdict→dict
+            "g32_store":       {k: v.cpu()
+                                for k, v in ld.g32_store.items()},
+        })
+
+    torch.save(payload, folder / f"ckpt_{mode}_step{step:04d}.pt")
+
+
+def load_checkpoint(path, device):
+    ckpt = torch.load(path, map_location=device)
+    torch.set_rng_state(ckpt["rng_state"])
+    if torch.cuda.is_available() and ckpt["cuda_rng"] is not None:
+        for dev, state in zip(range(torch.cuda.device_count()), ckpt["cuda_rng"]):
+            torch.cuda.set_rng_state(state, device=dev)
     
-
-    run_dir.mkdir(parents=True, exist_ok=True)
-    print(f"Run dir: {run_dir}")
-    export_dir = run_dir / "instability_dumps"
-    export_dir.mkdir(exist_ok=True)
-
-    
-    import uuid
-    wandb_tag = f"{tag}_{uuid.uuid4().hex[:4]}"
-
-    wandb.init(
-        project=args.wandb_project,
-        name   =wandb_tag,       # human‑readable in the W&B UI
-        id     =wandb_tag,       # makes the run resumable / unique
-        config =cfg,
-        resume ="allow",
-        settings=wandb.Settings(init_timeout=120)
-    )
-
-    # ------------------ model / teacher ---------------------------
-    print("Getting model and teacher")
-    act_name = "linear" if args.no_act else args.act
-    model = ResidualMLP(args.width, args.depth, not args.no_ln, act_name).to(device)
-    if args.use_custom_init:
-        model.apply(custom_init)
-    init_state = {k: v.clone() for k,v in model.state_dict().items()}
-    teacher = make_teacher(input_dim=args.width,
-                           teacher_width=args.teacher_width,
-                           depth=args.teacher_depth,
-                           act=args.teacher_act,
-                           device="cpu")
-    
-    #teacher_fp64 = copy.deepcopy(teacher).double().to(device)
-    teacher_fp32 = copy.deepcopy(teacher).float().to(device)
-
-    #teacher_fp32 = make_teacher(args.teacher_width,
-                    #    args.teacher_depth,
-                    #    act_name, device)
-
-    # ---------- data & bookkeeping --------------------------------
-    print("Making batches")
-    batches = [gaussian(args.batch, args.width, device) for _ in range(args.steps_total)]
-    val_batches = [gaussian(args.val_batch, args.width, device)
-               for _ in range(args.val_steps)]
-
-    g_fp32_mean_store, g_fp32_norm_store = [], []
-    #g_fp64_mean_store, g_fp64_norm_store = [], []
-
-    param_slices = build_param_slices(model, not args.no_ln)
-    global_step=0
+    return ckpt
 
 
-    # ========== Phase 1 : FP32 ====================================
-    #teacher = teacher.float()
-    model.load_state_dict(init_state)
+# ───────────────────────── FP32 TRAINING PHASE ─────────────────────────────
+def fp32_loop(ld: LoopData,
+              model: nn.Module,
+              teacher_fp32: nn.Module,
+              batches: list[torch.Tensor],
+              val_batches: list[torch.Tensor],
+              param_slices):
+    """
+    Runs the full-precision warm-up phase.
+    All metrics are written into `ld` and WandB.
+    """
+    args = ld.args
     opt32, sched32 = make_optimizer(model, args)
-    if args.store_full_gradients:
-        g32_store = {}
-        g32_lam = {}
 
-    for step,x in enumerate(batches):
-        y = teacher_fp32(x) + args.noise_std*torch.randn_like(x, dtype=x.dtype)
+    for step, x in enumerate(batches):
+        # ── forward / backward ───────────────────────────────────────────
+        y = teacher_fp32(x) + args.noise_std * torch.randn_like(x, dtype=x.dtype)
         opt32.zero_grad(set_to_none=True)
         loss = F.mse_loss(model(x), y)
         loss.backward()
 
+        # ── logging & instrumentation (unchanged except for ld.* names) ──
         if args.log_weight_clipping:
-            clipped_total_h_fp32, elems_total_h_fp32     = 0, 0
-            clipped_total_out_fp32, elems_total_out_fp32 = 0, 0
+            clipped_total_h_fp32 = elems_total_h_fp32 = 0
+            clipped_total_out_fp32 = elems_total_out_fp32 = 0
 
             with torch.no_grad():
                 z = x
                 post_ln_acts = []
-
                 for blk_idx, blk in enumerate(model.layers):
                     # 1) residual input
                     x_in = z
-
                     # 2) apply LayerNorm (if any) and record
                     z_norm = blk.ln(x_in) if not args.no_ln else x_in
                     post_ln_acts.append(z_norm)
-
                     # 3) hidden activation
                     a1 = blk.fc1(z_norm)
                     h  = blk.act_fn(a1)
-
-                    # 4) hidden‐state clipping in FP32
+                    # 4) hidden-state clipping
                     c_h, t_h = count_clipped_values_fp32(h)
-                    wandb.log({
-                        f"ClipAct/fp32_blk{blk_idx}_hidden_clipped_frac": c_h / t_h
-                    }, step=global_step)
-                    clipped_total_h_fp32 += c_h
-                    elems_total_h_fp32   += t_h
-
-                    # 5) hidden‐state stats
-                    wandb.log({
+                    ld.log({f"ClipAct/fp32_blk{blk_idx}_hidden_clipped_frac": c_h / t_h})
+                    clipped_total_h_fp32 += c_h;  elems_total_h_fp32 += t_h
+                    # 5) hidden-state stats
+                    ld.log({
                         f"act/mean_hid{blk_idx}_fp32": h.mean().item(),
                         f"act/var_hid{blk_idx}_fp32":  h.var(unbiased=False).item(),
-                    }, step=global_step)
-
+                    })
                     # 6) alignment metric
-                    W2 = blk.fc2.weight              # (d_out , d)
-                    proj = torch.matmul(W2, h.T).abs()   # (d_out , B)
-                    numer = proj.mean(dim=1)             # (d_out,)
-                    w_norm = (W2 ** 2).sum(dim=1, keepdim=True).sqrt()      # (d_out , 1)
-                    h_norm = (h  ** 2).sum(dim=1, keepdim=True).sqrt().T    # (1      , B)
-                    denom  = (w_norm * h_norm).mean(dim=1) + 1e-12        
-                    align  = (numer / denom.squeeze()).mean()   # scalar
-                    wandb.log({f"align/fp32_blk{blk_idx}": align.item()}, step=global_step)
-
-                    # 7) residual add & output clipping in FP32
-                    z = x_in + blk.fc2(h)
+                    W2    = blk.fc2.weight
+                    proj  = torch.matmul(W2, h.T).abs()
+                    numer = proj.mean(dim=1)
+                    w_norm = (W2**2).sum(dim=1, keepdim=True).sqrt()
+                    h_norm = (h**2).sum(dim=1, keepdim=True).sqrt().T
+                    denom  = (w_norm * h_norm).mean(dim=1) + 1e-12
+                    align  = (numer / denom.squeeze()).mean()
+                    ld.log({f"align/fp32_blk{blk_idx}": align.item()})
+                    # 7) residual add & output clipping
+                    z     = x_in + blk.fc2(h)
                     c_o, t_o = count_clipped_values_fp32(z)
-                    wandb.log({
-                        f"ClipAct/fp32_blk{blk_idx}_output_clipped_frac": c_o / t_o
-                    }, step=global_step)
-                    clipped_total_out_fp32 += c_o
-                    elems_total_out_fp32   += t_o
-
-                    # 8) log LayerNorm γ/β stats
+                    ld.log({f"ClipAct/fp32_blk{blk_idx}_output_clipped_frac": c_o / t_o})
+                    clipped_total_out_fp32 += c_o;  elems_total_out_fp32 += t_o
+                    # 8) γ/β stats
                     gamma = blk.ln.weight.data.detach().cpu()
                     beta  = blk.ln.bias.data.detach().cpu()
-                    wandb.log({
+                    ld.log({
                         f"act/fp32_ln{blk_idx}_gamma_mean": gamma.mean().item(),
                         f"act/fp32_ln{blk_idx}_gamma_var":  gamma.var().item(),
                         f"act/fp32_ln{blk_idx}_beta_mean":  beta.mean().item(),
                         f"act/fp32_ln{blk_idx}_beta_var":   beta.var().item(),
-                    }, step=global_step)
-
-
-
-                    # 9) γ/β clipping in FP32 (should be zero)
+                    })
+                    # 9) γ/β clipping (should be zero)
                     c_g, t_g = count_clipped_values_fp32(gamma)
                     c_b, t_b = count_clipped_values_fp32(beta)
-                    wandb.log({
+                    ld.log({
                         f"clipW/fp32_ln{blk_idx}_gamma_clipped_frac": c_g / t_g,
                         f"clipW/fp32_ln{blk_idx}_beta_clipped_frac":  c_b / t_b,
-                    }, step=global_step)
-
-                # 10) overall FP32 ClipAct totals
+                    })
+                # 10) layer-wise totals
                 if elems_total_h_fp32:
-                    wandb.log({
-                        "ClipAct/fp32_total_frac_hidden_all_layers":
-                        clipped_total_h_fp32 / elems_total_h_fp32
-                    }, step=global_step)
+                    ld.log({"ClipAct/fp32_total_frac_hidden_all_layers":
+                            clipped_total_h_fp32 / elems_total_h_fp32})
                 if elems_total_out_fp32:
-                    wandb.log({
-                        "ClipAct/fp32_total_frac_output_all_layers":
-                        clipped_total_out_fp32 / elems_total_out_fp32
-                    }, step=global_step)
-
-                # 11) per-layer post-LN activation stats in FP32
+                    ld.log({"ClipAct/fp32_total_frac_output_all_layers":
+                            clipped_total_out_fp32 / elems_total_out_fp32})
+                # 11) post-LN act stats
                 for k, a in enumerate(post_ln_acts):
-                    wandb.log({
+                    ld.log({
                         f"act/mean_layer{k}_input_after_ln_fp32": a.mean().item(),
                         f"act/var_layer{k}_input_after_ln_fp32":  a.var(unbiased=False).item(),
-                    }, step=global_step)
+                    })
 
-
+        # ── gradient bookkeeping ────────────────────────────────────────
         g32 = grad_vec(model, drop_scalars=True).cpu()
-        if step % STORE_GRADS_EVERY == 0 and args.store_full_gradients:
-            g32_store[step] = g32.clone().float() 
-        g_fp32_mean_store.append(g32.mean().item())
-        g_fp32_norm_store.append(torch.norm(g32).item())
-        for name, lo, hi in param_slices:                     # << add >>
-            group_mean_fp32[step][name] = g32[lo:hi].mean().item() 
+        if args.store_full_gradients and step % STORE_GRADS_EVERY == 0:
+            ld.g32_store[step] = g32.clone().float()
+        ld.g_fp32_mean.append(g32.mean().item())
+        ld.g_fp32_norm.append(torch.norm(g32).item())
+        for name, lo, hi in param_slices:
+            ld.group_mean_fp32[step][name] = g32[lo:hi].mean().item()
         del g32
 
-        opt32.step(); sched32.step() if sched32 else None
-        wandb.log({"train/loss_fp32": loss.item(),
-                   "lr_fp32": sched32.get_last_lr()[0] if sched32 else args.lr_max}, step=global_step)
-        loss_rec["fp32"][step] = loss.item()
+        # ── optimiser step & logs ───────────────────────────────────────
+        opt32.step();  sched32.step() if sched32 else None
+        ld.log({"train/loss_fp32": loss.item(),
+                "lr_fp32": sched32.get_last_lr()[0] if sched32 else args.lr_max})
+        ld.loss_rec["fp32"][step] = loss.item()
+
         if step % args.val_every == 0:
             model.eval()
             v = val_loss(model, teacher_fp32, F.mse_loss, val_batches)
-            loss_rec["fp32"][f"val_{step}"] = v
+            ld.loss_rec["fp32"][f"val_{step}"] = v
             print(f"val_loss_fp32: {v:.3e}")
-            wandb.log({"val/loss_fp32": v}, step=global_step)
-
-
+            ld.log({"val/loss_fp32": v})
             model.train()
-        global_step += 1
 
-    
-    # ========== Phase 2 : MX ======================================
-    print("MX phase")
-    # rewind the RNG so MX sees the same noise no matter how many FP32 draws happened above
-    torch.manual_seed(args.seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(args.seed)
+        if (args.save_checkpoints and args.checkpoint_window_center is not None \
+            and abs(ld.global_step - args.checkpoint_window_center) <= args.checkpoint_window_size) \
+            and (ld.global_step % args.checkpoint_every == 0 or ld.global_step == args.steps_total - 1):
+            save_checkpoint(ld.global_step, model, opt32, sched32, args, pathlib.Path(args.checkpoint_dir), mode="fp32", ld=ld)
 
+        ld.global_step += 1
+
+
+# ───────────────────────── MX TRAINING PHASE ───────────────────────────────
+def mx_loop(ld: LoopData,
+            model_init_state: dict,
+            teacher_fp32: nn.Module,
+            batches: list[torch.Tensor],
+            val_batches: list[torch.Tensor],
+            param_slices,
+            export_dir: pathlib.Path):
+    """
+    Runs the low-precision phase **with identical logging**.
+    Reads FP32 reference stats from `ld`, writes MX stats back into `ld`.
+    """
+    args = ld.args
+    device  = torch.device(args.device)
+    act_name = "linear" if args.no_act else args.act
+    e_max, v_max = fmt_meta(args.elem_format)
+    set_seed(ld.args.seed)
+
+    # ─── rebuild the MX student & optimiser ──────────────────────────────
     if args.debias_MX_gradient:
-        model_mx = ResidualMLP(args.width, args.depth,
-                            not args.no_ln, act_name,
-                            debias=True).to(device)
-        # load only the shared parameters; leave the new g scalars
-        model_mx.load_state_dict(init_state, strict=False)
+        model = ResidualMLP(args.width, args.depth,
+                            not args.no_ln, act_name, debias=True).to(device)
+        model.load_state_dict(model_init_state, strict=False)
     else:
-        model_mx = ResidualMLP(args.width, args.depth,
-                            not args.no_ln, act_name,
-                            debias=False).to(device)
-        model_mx.load_state_dict(init_state)          # strict=True OK
+        model = ResidualMLP(args.width, args.depth,
+                            not args.no_ln, act_name).to(device)
+        model.load_state_dict(model_init_state)
 
-    model = model_mx
     opt, sched = make_optimizer(model, args)
     mx_mapping.inject_pyt_ops(make_mx_specs(args))
 
-    for step,x in enumerate(batches):
-        y = teacher_fp32(x) + args.noise_std*torch.randn_like(x, dtype=x.dtype)
+    for step, x in enumerate(batches):
+        # ── forward / backward ───────────────────────────────────────────
+        y = teacher_fp32(x) + args.noise_std * torch.randn_like(x, dtype=x.dtype)
         opt.zero_grad(set_to_none=True)
         loss_mx = F.mse_loss(model(x), y); loss_mx.backward()
 
+        # ── weight-clipping stats ───────────────────────────────────────
         if args.log_weight_clipping:
-            clipW_tot, elemsW_tot = 0, 0
+            clipW_tot = elemsW_tot = 0
             for n, p in model.named_parameters():
                 if ".weight" in n:
                     c, t = count_clipped_values(p.data, 32, args.elem_format)
-                    wandb.log({f"clipW/{n}": c / t}, step=global_step)
-                    clipW_tot  += c
-                    elemsW_tot += t
+                    ld.log({f"clipW/{n}": c / t});  clipW_tot += c;  elemsW_tot += t
             if elemsW_tot:
-                wandb.log({"clipW/total_frac": clipW_tot / elemsW_tot}, step=global_step)
+                ld.log({"clipW/total_frac": clipW_tot / elemsW_tot})
 
+        # ── gradient vec & eps metrics ──────────────────────────────────
         g_mx = grad_vec(model, drop_scalars=True).cpu()
 
         if args.debias_MX_gradient:
-            for n,p in model.named_parameters():
-                if n.endswith(".g"):
-                    wandb.log({f"g/{n}": p.item()}, step=global_step)
-                if n.endswith(("g_a1","g_a2")):
-                    wandb.log({f"g/act_{n}": p.item()}, step=global_step)
+            for n, p in model.named_parameters():
+                if n.endswith(".g"):            ld.log({f"g/{n}": p.item()})
+                if n.endswith(("g_a1", "g_a2")): ld.log({f"g/act_{n}": p.item()})
 
-        # eps wrt fp32
         mx_mean = g_mx.mean().item()
-        #eps_f64 = g_mx - g_fp64_store[step]
         mx_norm = ((g_mx**2).sum().sqrt()).item()
+        eps_mean = mx_mean - ld.g_fp32_mean[step]
+        eps_norm_upper_bound = mx_norm + ld.g_fp32_norm[step]
 
-        eps_mean = mx_mean - g_fp32_mean_store[step]
-        eps_norm_upper_bound = mx_norm + g_fp32_norm_store[step]
-        #eps_norm_upper_bound_64 = mx_norm + g_fp64_norm_store[step]
+        # ---- per-group ε means ---------------------------------------
         group_eps_mean = {}
-        #group_eps_mean_fp64 = {}
-        
-
-
-
-        if step % STORE_GRADS_EVERY == 0 and args.store_full_gradients:
-            #lam = g32_lam[step]
-            #eta_lam = args.lr_max * lam
-            eps_vec      = g_mx - g32_store[step]           # ε_t
-            eps_norm2    = (eps_vec**2).sum().item()
-            g_fp32_norm2 = (g32_store[step]**2).sum().item()
-            cos_theta = torch.dot(g_mx, g32_store[step]) / (mx_norm * g_fp32_norm_store[step] + 1e-12)
-            sigma2       = eps_norm2 / (g_fp32_norm2 + 1e-12)  # σ_ζ²  (empirical)
-            rhs          = 2.0 / (sigma2 + 1e-12)
-            zeta_i = eps_vec / g32_store[step]
-            sigma_inf = torch.max(torch.abs(zeta_i))
-            del g32_store[step] #save some memory
-            #rhs = 2.0 / (sigma_inf**2 + 1e-12)
-
-            wandb.log({
-                #"hess/lambda_full"      : lam,
-                "stab/cos"         : cos_theta,
-                #"stab/lhs_eta_lam"      : eta_lam,
-                "stab/rhs_2_over_sigma2": rhs,
-                #"stab/ratio_lhs_over_rhs": eta_lam / rhs,
-                "stab/zeta_norm": sigma2,
-                "stab/sigma_inf" : sigma_inf,
-                "stab/zeta_i_2_norm": (zeta_i**2).sum().sqrt(),
-            }, step=global_step)
-
-            mask_chunks = []
-            for name, p in model.named_parameters():
-                if p.requires_grad and not name.endswith((".g_a1", ".g_a2", ".g")):
-                    # mask for this param  (True where *clipped*)
-                    flat = p.data.abs().view(-1, 32)                 # (n_blocks, 32)
-                    max_pb = flat.max(dim=1, keepdim=True).values
-                    scales = 2.0 ** (torch.floor(torch.log2(max_pb)) - e_max)
-                    mask  = (flat > v_max * scales).view_as(p.data)
-                    mask_chunks.append(mask.flatten())
-            mask_flat = torch.cat(mask_chunks).to(eps_vec.device).float()
-
-            eps_clip = mx_safe_norm((mask_flat * eps_vec))
-            frac_eps = eps_clip / (mx_safe_norm(eps_vec) + 1e-12)
-            wandb.log({"ste/eps_from_clipping": frac_eps}, step=global_step)
-            
         for name, lo, hi in param_slices:
             mx_grp_mean  = g_mx[lo:hi].mean().item()
-            fp32_grp_mean = group_mean_fp32[step][name]       # cached above
-            #fp64_grp_mean = group_mean_fp64[step][name]       # cached above
+            fp32_grp_mean = ld.group_mean_fp32[step][name]
             group_eps_mean[name] = mx_grp_mean - fp32_grp_mean
-            #group_eps_mean_fp64[name] = mx_grp_mean - fp64_grp_mean
-            wandb.log({f"eps/mean_{name}": group_eps_mean[name]}, step=global_step)
-            #wandb.log({f"eps/mean_fp64_{name}": group_eps_mean_fp64[name]}, step=global_step)
+            ld.log({f"eps/mean_{name}": group_eps_mean[name]})
 
-        fp32_norm = g_fp32_norm_store[step]
-  
+        # ---- ε-vector diagnostics (only if we kept g32_store) ---------
+        if args.store_full_gradients and step in ld.g32_store:
+            eps_vec   = g_mx - ld.g32_store[step]
+            eps_norm2 = (eps_vec**2).sum().item()
+            g_norm2   = (ld.g32_store[step]**2).sum().item()
+            cos_theta = torch.dot(g_mx, ld.g32_store[step]) / (mx_norm * ld.g_fp32_norm[step] + 1e-12)
+            sigma2    = eps_norm2 / (g_norm2 + 1e-12)
+            ld.log({
+                "stab/cos": cos_theta,
+                "stab/rhs_2_over_sigma2": 2.0 / (sigma2 + 1e-12),
+                "stab/zeta_norm": sigma2,
+            })
+            # clean up to save GPU RAM
+            del ld.g32_store[step]
 
-        loss_rec["mx"][step] = loss_mx.item()
-
-# ---- ε bookkeeping -------------------------------------------
-        eps_rec[step] = {                       # <<– now a dict, not a tensor
-            "mean":       eps_mean,
-            "norm_upper": eps_norm_upper_bound,
-            #"norm_upper_64": eps_norm_upper_bound_64,
-            "mx_norm":    mx_norm,
-            "fp32_norm":  fp32_norm,
-            
-            #"fp64_norm":  fp64_norm,           # per‑slice variances
-            "group_mean_fp32": group_eps_mean.copy(),
-            #"group_mean_fp64": group_eps_mean_fp64.copy(),
-        }
-        
-        # activations distribution every val_every
-        if step % args.val_every == 0:
-            model.eval()
-            with torch.no_grad():
-                v = val_loss(model, teacher_fp32, F.mse_loss, val_batches)
-
-                print(f"val_loss_mx: {v:.3e}")  
-                wandb.log({"val/loss_mx": v}, step=global_step)
-
-            if args.log_weight_clipping:
-                for layer_idx, blk in enumerate(model.layers):
-                    
-                    hist_gamma = wandb.Histogram(np_histogram = np.histogram(gamma, bins=100))
-                    hist_beta = wandb.Histogram(np_histogram = np.histogram(beta, bins=100))
-
-                    
-            
+        # ---- heavy activation-stat block (unchanged) ------------------
         if args.log_weight_clipping:
             clipped_total_h, elems_total_h = 0, 0
             clipped_total_layer, elems_total_layer = 0, 0
@@ -844,18 +774,18 @@ def run_dual(args):
                 for blk_idx, blk in enumerate(model.layers):
                     x_in = z
 
-                    save_instability_tensors(x_in, export_dir, global_step, blk_idx, "input", 12650, 12800)
+                    save_instability_tensors(x_in, export_dir, ld.global_step, blk_idx, "input", 12650, 12800)
 
                     z_norm = blk.ln(x_in) if not args.no_ln else x_in
 
-                    save_instability_tensors(z_norm, export_dir, global_step, blk_idx, "postLN", 12650, 12800)
+                    save_instability_tensors(z_norm, export_dir, ld.global_step, blk_idx, "postLN", 12650, 12800)
 
                     input_after_layernorm_if_ln.append(z_norm)
 
                     a1 = blk.fc1(z_norm)
                     h  = blk.act_fn(a1)              # current block activation
 
-                    save_instability_tensors(h, export_dir, global_step, blk_idx, "hidden", 12650, 12800)
+                    save_instability_tensors(h, export_dir, ld.global_step, blk_idx, "hidden", 12650, 12800)
 
 
                     hs.append(h)
@@ -867,20 +797,20 @@ def run_dual(args):
                     h_norm = (h  ** 2).sum(dim=1, keepdim=True).sqrt().T    # (1      , B)
                     denom  = (w_norm * h_norm).mean(dim=1) + 1e-12        
                     align  = (numer / denom.squeeze()).mean()   # scalar
-                    wandb.log({f"align/blk{blk_idx}": align.item()}, step=global_step)
+                    wandb.log({f"align/blk{blk_idx}": align.item()}, step=ld.global_step)
 
                     # hidden state:
                     c_h, t_h = count_clipped_values(h, 32, args.elem_format)
-                    wandb.log({f"ClipAct/blk{blk_idx}_hidden_clipped_frac": c_h / t_h}, step=global_step)
+                    wandb.log({f"ClipAct/blk{blk_idx}_hidden_clipped_frac": c_h / t_h}, step=ld.global_step)
                     clipped_total_h += c_h;  elems_total_h += t_h
 
                     wandb.log({f"act/mean_hid{blk_idx}": h.mean().item(),
-                            f"act/var_hid{blk_idx}":  h.var(unbiased=False).item()}, step=global_step)
+                            f"act/var_hid{blk_idx}":  h.var(unbiased=False).item()}, step=ld.global_step)
 
                     # layer output after adding to residual stream
                     z_blk = blk.fc2(h) + x_in
                     c_z, t_z = count_clipped_values(z_blk, 32, args.elem_format)
-                    wandb.log({f"ClipAct/blk{blk_idx}_output_clipped_frac": c_z / t_z}, step=global_step)
+                    wandb.log({f"ClipAct/blk{blk_idx}_output_clipped_frac": c_z / t_z}, step=ld.global_step)
                     clipped_total_layer += c_z;  elems_total_layer += t_z
 
                     
@@ -895,43 +825,716 @@ def run_dual(args):
                         f"act/ln{blk_idx}_gamma_var":  gamma.var().item(),
                         f"act/ln{blk_idx}_beta_mean":  beta.mean().item(),
                         f"act/ln{blk_idx}_beta_var":   beta.var().item(),
-                    }, step=global_step)
+                    }, step=ld.global_step)
 
                     # if global set if > 12650 and < 12800, save activaitons and gamma and beta
-                    save_instability_tensors(gamma, export_dir, global_step, blk_idx, "gamma", 12650, 12800)
-                    save_instability_tensors(beta, export_dir, global_step, blk_idx, "beta", 12650, 12800)
+                    save_instability_tensors(gamma, export_dir, ld.global_step, blk_idx, "gamma", 12650, 12800)
+                    save_instability_tensors(beta, export_dir, ld.global_step, blk_idx, "beta", 12650, 12800)
 
 
                     # log how much of gamma and beta are being clipped
                     c_gamma, t_gamma = count_clipped_values(gamma, 32, args.elem_format)
-                    wandb.log({f"clipW/ln{blk_idx}_gamma_clipped_frac": c_gamma / t_gamma}, step=global_step)
+                    wandb.log({f"clipW/ln{blk_idx}_gamma_clipped_frac": c_gamma / t_gamma}, step=ld.global_step)
                     c_beta, t_beta = count_clipped_values(beta, 32, args.elem_format)
-                    wandb.log({f"clipW/ln{blk_idx}_beta_clipped_frac": c_beta / t_beta}, step=global_step)
+                    wandb.log({f"clipW/ln{blk_idx}_beta_clipped_frac": c_beta / t_beta}, step=ld.global_step)
 
                 if elems_total_h:
-                    wandb.log({"ClipAct/total_frac_hidden_all_layers": clipped_total_h / elems_total_h}, step=global_step)
+                    wandb.log({"ClipAct/total_frac_hidden_all_layers": clipped_total_h / elems_total_h}, step=ld.global_step)
                 if elems_total_layer:
-                    wandb.log({"ClipAct/total_frac_layer_all_layers": clipped_total_layer / elems_total_layer}, step=global_step)
+                    wandb.log({"ClipAct/total_frac_layer_all_layers": clipped_total_layer / elems_total_layer}, step=ld.global_step)
                 
                 for k,a in enumerate(input_after_layernorm_if_ln):
                     wandb.log({f"act/mean_layer{k}_input_after_ln": a.mean().item(),
-                            f"act/var_layer{k}_input_after_ln":  a.var(unbiased=False).item()}, step=global_step)
+                            f"act/var_layer{k}_input_after_ln":  a.var(unbiased=False).item()}, step=ld.global_step)
                     
 
             model.train()
 
+        # ---- bookkeeping ---------------------------------------------
+        ld.loss_rec["mx"][step] = loss_mx.item()
+        ld.eps_rec[step] = {
+            "mean": eps_mean,
+            "norm_upper": eps_norm_upper_bound,
+            "mx_norm": mx_norm,
+            "fp32_norm": ld.g_fp32_norm[step],
+            "group_mean_fp32": group_eps_mean.copy(),
+        }
 
-        wandb.log({
+        ld.log({
             "eps_step": step,
             "eps/mean": eps_mean,
             "eps/norm_upper_bound": eps_norm_upper_bound,
             "train/loss_mx": loss_mx.item(),
             "lr": sched.get_last_lr()[0] if sched else args.lr_max,
-        }, step=global_step)
+        })
 
+        # ---- optimiser step ------------------------------------------
         opt.step();  sched.step() if sched else None
-        global_step += 1
+
+        if step % args.val_every == 0:
+            model.eval()
+            v = val_loss(model, teacher_fp32, F.mse_loss, val_batches)
+            ld.loss_rec["mx"][f"val_{step}"] = v
+            print(f"val_loss_mx: {v:.3e}")
+            ld.log({"val/loss_mx": v})
+            model.train()
+
+
+        if (args.save_checkpoints and args.checkpoint_window_center is not None \
+            and abs(ld.global_step - args.checkpoint_window_center) <= args.checkpoint_window_size) \
+            and (ld.global_step % args.checkpoint_every == 0 or ld.global_step == args.steps_total - 1):
+            save_checkpoint(ld.global_step, model, opt, sched, args, pathlib.Path(args.checkpoint_dir), mode="mx")
+
+        ld.global_step += 1
+
+
+def run_dual(args):
+    # ─── Setup ────────────────────────────────────────────────────────
+    print("Setting seed")
+    set_seed(args.seed)
+    device = torch.device(args.device)
+    e_max, v_max = fmt_meta(args.elem_format)
+
+    # make save_root
+    args.save_root.mkdir(parents=True, exist_ok=True)
+
+    # build run directory & WandB tag
+    cfg = vars(args)
+    tag, run_dir = build_tags(cfg, random_tag=True, save_root=args.save_root)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Run dir: {run_dir}")
+
+    export_dir = run_dir / "instability_dumps"
+    export_dir.mkdir(exist_ok=True)
+
+    import uuid
+    wandb_tag = f"{tag}_{uuid.uuid4().hex[:4]}"
+    wandb.init(
+        project=args.wandb_project,
+        name=wandb_tag,
+        id=wandb_tag,
+        config=cfg,
+        resume="allow",
+        settings=wandb.Settings(init_timeout=120),
+    )
+
+    # ─── Model & Teacher ─────────────────────────────────────────────
+    print("Getting model and teacher")
+    act_name = "linear" if args.no_act else args.act
+    model = ResidualMLP(args.width, args.depth, not args.no_ln, act_name).to(device)
+    if args.use_custom_init:
+        model.apply(custom_init)
+    init_state = {k: v.clone() for k, v in model.state_dict().items()}
+
+    teacher = make_teacher(
+        input_dim=args.width,
+        teacher_width=args.teacher_width,
+        depth=args.teacher_depth,
+        act=args.teacher_act,
+        device="cpu",
+    )
+    teacher_fp32 = copy.deepcopy(teacher).float().to(device)
+
+    # ─── Data & Slices ────────────────────────────────────────────────
+    print("Making batches")
+    batches = [gaussian(args.batch, args.width, device) for _ in range(args.steps_total)]
+    val_batches = [gaussian(args.val_batch, args.width, device) for _ in range(args.val_steps)]
+
+    param_slices = build_param_slices(model, not args.no_ln)
+
+    # ─── Run FP32 Warm-up ─────────────────────────────────────────────
+    ld = LoopData(args=args)
+    fp32_loop(ld, model, teacher_fp32, batches, val_batches, param_slices)
+
+    # ─── Run MX Phase ────────────────────────────────────────────────
+    print("MX phase")
+    mx_loop(ld, init_state, teacher_fp32, batches, val_batches, param_slices, export_dir)
+
+    # ─── Clean up ───────────────────────────────────────────────────
     wandb.finish()
+
+
+
+# ===================  MAIN  ======================================
+# def run_dual(args):
+#     print("Setting seed")
+#     set_seed(args.seed)
+#     device = torch.device(args.device)
+#     STORE_GRADS_EVERY = 5
+
+#     e_max, v_max = fmt_meta(args.elem_format)
+
+#     #make save_root
+#     args.save_root.mkdir(parents=True, exist_ok=True)
+
+#     # ---------- data & bookkeeping --------------------------------
+#     loss_rec = {"fp32": {}, "mx": {}}
+#     eps_rec  = {}                                       # NEW   step → tensor (cpu)
+#     act_rec  = defaultdict(dict)                        # NEW   act_rec[layer][step] = (mean,var)
+#     group_mean_fp32 = defaultdict(dict)
+#     act_store = defaultdict(dict)
+#     #group_mean_fp64 = defaultdict(dict)
+
+
+#     # ------------------ dirs & wandb ------------------------------
+#     cfg = vars(args)
+#     tag, run_dir = build_tags(cfg, random_tag=True, save_root=args.save_root)
+    
+
+#     run_dir.mkdir(parents=True, exist_ok=True)
+#     print(f"Run dir: {run_dir}")
+#     export_dir = run_dir / "instability_dumps"
+#     export_dir.mkdir(exist_ok=True)
+
+    
+#     import uuid
+#     wandb_tag = f"{tag}_{uuid.uuid4().hex[:4]}"
+
+#     wandb.init(
+#         project=args.wandb_project,
+#         name   =wandb_tag,       # human‑readable in the W&B UI
+#         id     =wandb_tag,       # makes the run resumable / unique
+#         config =cfg,
+#         resume ="allow",
+#         settings=wandb.Settings(init_timeout=120)
+#     )
+
+#     # ------------------ model / teacher ---------------------------
+#     print("Getting model and teacher")
+#     act_name = "linear" if args.no_act else args.act
+#     model = ResidualMLP(args.width, args.depth, not args.no_ln, act_name).to(device)
+#     if args.use_custom_init:
+#         model.apply(custom_init)
+#     init_state = {k: v.clone() for k,v in model.state_dict().items()}
+#     teacher = make_teacher(input_dim=args.width,
+#                            teacher_width=args.teacher_width,
+#                            depth=args.teacher_depth,
+#                            act=args.teacher_act,
+#                            device="cpu")
+    
+#     #teacher_fp64 = copy.deepcopy(teacher).double().to(device)
+#     teacher_fp32 = copy.deepcopy(teacher).float().to(device)
+
+#     #teacher_fp32 = make_teacher(args.teacher_width,
+#                     #    args.teacher_depth,
+#                     #    act_name, device)
+
+#     # ---------- data & bookkeeping --------------------------------
+#     print("Making batches")
+#     batches = [gaussian(args.batch, args.width, device) for _ in range(args.steps_total)]
+#     val_batches = [gaussian(args.val_batch, args.width, device)
+#                for _ in range(args.val_steps)]
+
+#     g_fp32_mean_store, g_fp32_norm_store = [], []
+#     #g_fp64_mean_store, g_fp64_norm_store = [], []
+
+#     param_slices = build_param_slices(model, not args.no_ln)
+#     global_step=0
+
+
+#     # ========== Phase 1 : FP32 ====================================
+#     #teacher = teacher.float()
+#     model.load_state_dict(init_state)
+#     opt32, sched32 = make_optimizer(model, args)
+#     if args.store_full_gradients:
+#         g32_store = {}
+#         g32_lam = {}
+
+#     for step,x in enumerate(batches):
+#         y = teacher_fp32(x) + args.noise_std*torch.randn_like(x, dtype=x.dtype)
+#         opt32.zero_grad(set_to_none=True)
+#         loss = F.mse_loss(model(x), y)
+#         loss.backward()
+
+#         if args.log_weight_clipping:
+#             clipped_total_h_fp32, elems_total_h_fp32     = 0, 0
+#             clipped_total_out_fp32, elems_total_out_fp32 = 0, 0
+
+#             with torch.no_grad():
+#                 z = x
+#                 post_ln_acts = []
+
+#                 for blk_idx, blk in enumerate(model.layers):
+#                     # 1) residual input
+#                     x_in = z
+
+#                     # 2) apply LayerNorm (if any) and record
+#                     z_norm = blk.ln(x_in) if not args.no_ln else x_in
+#                     post_ln_acts.append(z_norm)
+
+#                     # 3) hidden activation
+#                     a1 = blk.fc1(z_norm)
+#                     h  = blk.act_fn(a1)
+
+#                     # 4) hidden‐state clipping in FP32
+#                     c_h, t_h = count_clipped_values_fp32(h)
+#                     wandb.log({
+#                         f"ClipAct/fp32_blk{blk_idx}_hidden_clipped_frac": c_h / t_h
+#                     }, step=global_step)
+#                     clipped_total_h_fp32 += c_h
+#                     elems_total_h_fp32   += t_h
+
+#                     # 5) hidden‐state stats
+#                     wandb.log({
+#                         f"act/mean_hid{blk_idx}_fp32": h.mean().item(),
+#                         f"act/var_hid{blk_idx}_fp32":  h.var(unbiased=False).item(),
+#                     }, step=global_step)
+
+#                     # 6) alignment metric
+#                     W2 = blk.fc2.weight              # (d_out , d)
+#                     proj = torch.matmul(W2, h.T).abs()   # (d_out , B)
+#                     numer = proj.mean(dim=1)             # (d_out,)
+#                     w_norm = (W2 ** 2).sum(dim=1, keepdim=True).sqrt()      # (d_out , 1)
+#                     h_norm = (h  ** 2).sum(dim=1, keepdim=True).sqrt().T    # (1      , B)
+#                     denom  = (w_norm * h_norm).mean(dim=1) + 1e-12        
+#                     align  = (numer / denom.squeeze()).mean()   # scalar
+#                     wandb.log({f"align/fp32_blk{blk_idx}": align.item()}, step=global_step)
+
+#                     # 7) residual add & output clipping in FP32
+#                     z = x_in + blk.fc2(h)
+#                     c_o, t_o = count_clipped_values_fp32(z)
+#                     wandb.log({
+#                         f"ClipAct/fp32_blk{blk_idx}_output_clipped_frac": c_o / t_o
+#                     }, step=global_step)
+#                     clipped_total_out_fp32 += c_o
+#                     elems_total_out_fp32   += t_o
+
+#                     # 8) log LayerNorm γ/β stats
+#                     gamma = blk.ln.weight.data.detach().cpu()
+#                     beta  = blk.ln.bias.data.detach().cpu()
+#                     wandb.log({
+#                         f"act/fp32_ln{blk_idx}_gamma_mean": gamma.mean().item(),
+#                         f"act/fp32_ln{blk_idx}_gamma_var":  gamma.var().item(),
+#                         f"act/fp32_ln{blk_idx}_beta_mean":  beta.mean().item(),
+#                         f"act/fp32_ln{blk_idx}_beta_var":   beta.var().item(),
+#                     }, step=global_step)
+
+
+
+#                     # 9) γ/β clipping in FP32 (should be zero)
+#                     c_g, t_g = count_clipped_values_fp32(gamma)
+#                     c_b, t_b = count_clipped_values_fp32(beta)
+#                     wandb.log({
+#                         f"clipW/fp32_ln{blk_idx}_gamma_clipped_frac": c_g / t_g,
+#                         f"clipW/fp32_ln{blk_idx}_beta_clipped_frac":  c_b / t_b,
+#                     }, step=global_step)
+
+#                 # 10) overall FP32 ClipAct totals
+#                 if elems_total_h_fp32:
+#                     wandb.log({
+#                         "ClipAct/fp32_total_frac_hidden_all_layers":
+#                         clipped_total_h_fp32 / elems_total_h_fp32
+#                     }, step=global_step)
+#                 if elems_total_out_fp32:
+#                     wandb.log({
+#                         "ClipAct/fp32_total_frac_output_all_layers":
+#                         clipped_total_out_fp32 / elems_total_out_fp32
+#                     }, step=global_step)
+
+#                 # 11) per-layer post-LN activation stats in FP32
+#                 for k, a in enumerate(post_ln_acts):
+#                     wandb.log({
+#                         f"act/mean_layer{k}_input_after_ln_fp32": a.mean().item(),
+#                         f"act/var_layer{k}_input_after_ln_fp32":  a.var(unbiased=False).item(),
+#                     }, step=global_step)
+
+
+#         g32 = grad_vec(model, drop_scalars=True).cpu()
+#         if step % STORE_GRADS_EVERY == 0 and args.store_full_gradients:
+#             g32_store[step] = g32.clone().float() 
+#         g_fp32_mean_store.append(g32.mean().item())
+#         g_fp32_norm_store.append(torch.norm(g32).item())
+#         for name, lo, hi in param_slices:                     # << add >>
+#             group_mean_fp32[step][name] = g32[lo:hi].mean().item() 
+#         del g32
+
+#         opt32.step(); sched32.step() if sched32 else None
+#         wandb.log({"train/loss_fp32": loss.item(),
+#                    "lr_fp32": sched32.get_last_lr()[0] if sched32 else args.lr_max}, step=global_step)
+#         loss_rec["fp32"][step] = loss.item()
+#         if step % args.val_every == 0:
+#             model.eval()
+#             v = val_loss(model, teacher_fp32, F.mse_loss, val_batches)
+#             loss_rec["fp32"][f"val_{step}"] = v
+#             print(f"val_loss_fp32: {v:.3e}")
+#             wandb.log({"val/loss_fp32": v}, step=global_step)
+
+
+#             model.train()
+#         global_step += 1
+
+    
+#     # ========== Phase 2 : MX ======================================
+#     print("MX phase")
+#     # rewind the RNG so MX sees the same noise no matter how many FP32 draws happened above
+#     torch.manual_seed(args.seed)
+#     if torch.cuda.is_available():
+#         torch.cuda.manual_seed_all(args.seed)
+
+#     if args.debias_MX_gradient:
+#         model_mx = ResidualMLP(args.width, args.depth,
+#                             not args.no_ln, act_name,
+#                             debias=True).to(device)
+#         # load only the shared parameters; leave the new g scalars
+#         model_mx.load_state_dict(init_state, strict=False)
+#     else:
+#         model_mx = ResidualMLP(args.width, args.depth,
+#                             not args.no_ln, act_name,
+#                             debias=False).to(device)
+#         model_mx.load_state_dict(init_state)          # strict=True OK
+
+#     model = model_mx
+#     opt, sched = make_optimizer(model, args)
+#     mx_mapping.inject_pyt_ops(make_mx_specs(args))
+
+#     for step,x in enumerate(batches):
+#         y = teacher_fp32(x) + args.noise_std*torch.randn_like(x, dtype=x.dtype)
+#         opt.zero_grad(set_to_none=True)
+#         loss_mx = F.mse_loss(model(x), y); loss_mx.backward()
+
+#         if args.log_weight_clipping:
+#             clipW_tot, elemsW_tot = 0, 0
+#             for n, p in model.named_parameters():
+#                 if ".weight" in n:
+#                     c, t = count_clipped_values(p.data, 32, args.elem_format)
+#                     wandb.log({f"clipW/{n}": c / t}, step=global_step)
+#                     clipW_tot  += c
+#                     elemsW_tot += t
+#             if elemsW_tot:
+#                 wandb.log({"clipW/total_frac": clipW_tot / elemsW_tot}, step=global_step)
+
+#         g_mx = grad_vec(model, drop_scalars=True).cpu()
+
+#         if args.debias_MX_gradient:
+#             for n,p in model.named_parameters():
+#                 if n.endswith(".g"):
+#                     wandb.log({f"g/{n}": p.item()}, step=global_step)
+#                 if n.endswith(("g_a1","g_a2")):
+#                     wandb.log({f"g/act_{n}": p.item()}, step=global_step)
+
+#         # eps wrt fp32
+#         mx_mean = g_mx.mean().item()
+#         #eps_f64 = g_mx - g_fp64_store[step]
+#         mx_norm = ((g_mx**2).sum().sqrt()).item()
+
+#         eps_mean = mx_mean - g_fp32_mean_store[step]
+#         eps_norm_upper_bound = mx_norm + g_fp32_norm_store[step]
+#         #eps_norm_upper_bound_64 = mx_norm + g_fp64_norm_store[step]
+#         group_eps_mean = {}
+#         #group_eps_mean_fp64 = {}
+        
+
+
+
+#         if step % STORE_GRADS_EVERY == 0 and args.store_full_gradients:
+#             #lam = g32_lam[step]
+#             #eta_lam = args.lr_max * lam
+#             eps_vec      = g_mx - g32_store[step]           # ε_t
+#             eps_norm2    = (eps_vec**2).sum().item()
+#             g_fp32_norm2 = (g32_store[step]**2).sum().item()
+#             cos_theta = torch.dot(g_mx, g32_store[step]) / (mx_norm * g_fp32_norm_store[step] + 1e-12)
+#             sigma2       = eps_norm2 / (g_fp32_norm2 + 1e-12)  # σ_ζ²  (empirical)
+#             rhs          = 2.0 / (sigma2 + 1e-12)
+#             zeta_i = eps_vec / g32_store[step]
+#             sigma_inf = torch.max(torch.abs(zeta_i))
+#             del g32_store[step] #save some memory
+#             #rhs = 2.0 / (sigma_inf**2 + 1e-12)
+
+#             wandb.log({
+#                 #"hess/lambda_full"      : lam,
+#                 "stab/cos"         : cos_theta,
+#                 #"stab/lhs_eta_lam"      : eta_lam,
+#                 "stab/rhs_2_over_sigma2": rhs,
+#                 #"stab/ratio_lhs_over_rhs": eta_lam / rhs,
+#                 "stab/zeta_norm": sigma2,
+#                 "stab/sigma_inf" : sigma_inf,
+#                 "stab/zeta_i_2_norm": (zeta_i**2).sum().sqrt(),
+#             }, step=global_step)
+
+#             mask_chunks = []
+#             for name, p in model.named_parameters():
+#                 if p.requires_grad and not name.endswith((".g_a1", ".g_a2", ".g")):
+#                     # mask for this param  (True where *clipped*)
+#                     flat = p.data.abs().view(-1, 32)                 # (n_blocks, 32)
+#                     max_pb = flat.max(dim=1, keepdim=True).values
+#                     scales = 2.0 ** (torch.floor(torch.log2(max_pb)) - e_max)
+#                     mask  = (flat > v_max * scales).view_as(p.data)
+#                     mask_chunks.append(mask.flatten())
+#             mask_flat = torch.cat(mask_chunks).to(eps_vec.device).float()
+
+#             eps_clip = mx_safe_norm((mask_flat * eps_vec))
+#             frac_eps = eps_clip / (mx_safe_norm(eps_vec) + 1e-12)
+#             wandb.log({"ste/eps_from_clipping": frac_eps}, step=global_step)
+            
+#         for name, lo, hi in param_slices:
+#             mx_grp_mean  = g_mx[lo:hi].mean().item()
+#             fp32_grp_mean = group_mean_fp32[step][name]       # cached above
+#             #fp64_grp_mean = group_mean_fp64[step][name]       # cached above
+#             group_eps_mean[name] = mx_grp_mean - fp32_grp_mean
+#             #group_eps_mean_fp64[name] = mx_grp_mean - fp64_grp_mean
+#             wandb.log({f"eps/mean_{name}": group_eps_mean[name]}, step=global_step)
+#             #wandb.log({f"eps/mean_fp64_{name}": group_eps_mean_fp64[name]}, step=global_step)
+
+#         fp32_norm = g_fp32_norm_store[step]
+  
+
+#         loss_rec["mx"][step] = loss_mx.item()
+
+# # ---- ε bookkeeping -------------------------------------------
+#         eps_rec[step] = {                       # <<– now a dict, not a tensor
+#             "mean":       eps_mean,
+#             "norm_upper": eps_norm_upper_bound,
+#             #"norm_upper_64": eps_norm_upper_bound_64,
+#             "mx_norm":    mx_norm,
+#             "fp32_norm":  fp32_norm,
+            
+#             #"fp64_norm":  fp64_norm,           # per‑slice variances
+#             "group_mean_fp32": group_eps_mean.copy(),
+#             #"group_mean_fp64": group_eps_mean_fp64.copy(),
+#         }
+        
+#         # activations distribution every val_every
+#         if step % args.val_every == 0:
+#             model.eval()
+#             with torch.no_grad():
+#                 v = val_loss(model, teacher_fp32, F.mse_loss, val_batches)
+
+#                 print(f"val_loss_mx: {v:.3e}")  
+#                 wandb.log({"val/loss_mx": v}, step=global_step)
+
+#             if args.log_weight_clipping:
+#                 for layer_idx, blk in enumerate(model.layers):
+                    
+#                     hist_gamma = wandb.Histogram(np_histogram = np.histogram(gamma, bins=100))
+#                     hist_beta = wandb.Histogram(np_histogram = np.histogram(beta, bins=100))
+
+                    
+            
+#         if args.log_weight_clipping:
+#             clipped_total_h, elems_total_h = 0, 0
+#             clipped_total_layer, elems_total_layer = 0, 0
+#             with torch.no_grad():
+#                 z = x
+#                 input_after_layernorm_if_ln = []
+#                 hs = []
+#                 for blk_idx, blk in enumerate(model.layers):
+#                     x_in = z
+
+#                     save_instability_tensors(x_in, export_dir, global_step, blk_idx, "input", 12650, 12800)
+
+#                     z_norm = blk.ln(x_in) if not args.no_ln else x_in
+
+#                     save_instability_tensors(z_norm, export_dir, global_step, blk_idx, "postLN", 12650, 12800)
+
+#                     input_after_layernorm_if_ln.append(z_norm)
+
+#                     a1 = blk.fc1(z_norm)
+#                     h  = blk.act_fn(a1)              # current block activation
+
+#                     save_instability_tensors(h, export_dir, global_step, blk_idx, "hidden", 12650, 12800)
+
+
+#                     hs.append(h)
+
+#                     W2 = blk.fc2.weight              # (d_out , d)
+#                     proj = torch.matmul(W2, h.T).abs()   # (d_out , B)
+#                     numer = proj.mean(dim=1)             # (d_out,)
+#                     w_norm = (W2 ** 2).sum(dim=1, keepdim=True).sqrt()      # (d_out , 1)
+#                     h_norm = (h  ** 2).sum(dim=1, keepdim=True).sqrt().T    # (1      , B)
+#                     denom  = (w_norm * h_norm).mean(dim=1) + 1e-12        
+#                     align  = (numer / denom.squeeze()).mean()   # scalar
+#                     wandb.log({f"align/blk{blk_idx}": align.item()}, step=global_step)
+
+#                     # hidden state:
+#                     c_h, t_h = count_clipped_values(h, 32, args.elem_format)
+#                     wandb.log({f"ClipAct/blk{blk_idx}_hidden_clipped_frac": c_h / t_h}, step=global_step)
+#                     clipped_total_h += c_h;  elems_total_h += t_h
+
+#                     wandb.log({f"act/mean_hid{blk_idx}": h.mean().item(),
+#                             f"act/var_hid{blk_idx}":  h.var(unbiased=False).item()}, step=global_step)
+
+#                     # layer output after adding to residual stream
+#                     z_blk = blk.fc2(h) + x_in
+#                     c_z, t_z = count_clipped_values(z_blk, 32, args.elem_format)
+#                     wandb.log({f"ClipAct/blk{blk_idx}_output_clipped_frac": c_z / t_z}, step=global_step)
+#                     clipped_total_layer += c_z;  elems_total_layer += t_z
+
+                    
+#                     z = z_blk               # proceed to next block
+
+#                     # log layernorm data
+#                     gamma = blk.ln.weight.data.detach().cpu()
+#                     beta  = blk.ln.bias.data.detach().cpu()
+
+#                     wandb.log({
+#                         f"act/ln{blk_idx}_gamma_mean": gamma.mean().item(),
+#                         f"act/ln{blk_idx}_gamma_var":  gamma.var().item(),
+#                         f"act/ln{blk_idx}_beta_mean":  beta.mean().item(),
+#                         f"act/ln{blk_idx}_beta_var":   beta.var().item(),
+#                     }, step=global_step)
+
+#                     # if global set if > 12650 and < 12800, save activaitons and gamma and beta
+#                     save_instability_tensors(gamma, export_dir, global_step, blk_idx, "gamma", 12650, 12800)
+#                     save_instability_tensors(beta, export_dir, global_step, blk_idx, "beta", 12650, 12800)
+
+
+#                     # log how much of gamma and beta are being clipped
+#                     c_gamma, t_gamma = count_clipped_values(gamma, 32, args.elem_format)
+#                     wandb.log({f"clipW/ln{blk_idx}_gamma_clipped_frac": c_gamma / t_gamma}, step=global_step)
+#                     c_beta, t_beta = count_clipped_values(beta, 32, args.elem_format)
+#                     wandb.log({f"clipW/ln{blk_idx}_beta_clipped_frac": c_beta / t_beta}, step=global_step)
+
+#                 if elems_total_h:
+#                     wandb.log({"ClipAct/total_frac_hidden_all_layers": clipped_total_h / elems_total_h}, step=global_step)
+#                 if elems_total_layer:
+#                     wandb.log({"ClipAct/total_frac_layer_all_layers": clipped_total_layer / elems_total_layer}, step=global_step)
+                
+#                 for k,a in enumerate(input_after_layernorm_if_ln):
+#                     wandb.log({f"act/mean_layer{k}_input_after_ln": a.mean().item(),
+#                             f"act/var_layer{k}_input_after_ln":  a.var(unbiased=False).item()}, step=global_step)
+                    
+
+#             model.train()
+
+
+#         wandb.log({
+#             "eps_step": step,
+#             "eps/mean": eps_mean,
+#             "eps/norm_upper_bound": eps_norm_upper_bound,
+#             "train/loss_mx": loss_mx.item(),
+#             "lr": sched.get_last_lr()[0] if sched else args.lr_max,
+#         }, step=global_step)
+
+#         opt.step();  sched.step() if sched else None
+#         global_step += 1
+#     wandb.finish()
+
+def merge_args(base: dict, override: argparse.Namespace) -> argparse.Namespace:
+    """Return a Namespace equal to `base` but with any non-default
+    values from `override` patched in.  We ignore meta flags such as
+    run_intervention / intervention_checkpoint."""
+    merged = argparse.Namespace(**base)
+    skip = {"run_intervention", "intervention_checkpoint"}
+    for k, v in vars(override).items():
+        if k in skip:                   # never propagate
+            continue
+        if v != getattr(merged, k, None):
+            setattr(merged, k, v)
+    return merged
+
+
+def run_intervention(args):
+    """
+    Resume from a checkpoint and continue *only* the MX phase, possibly
+    with a modified MX spec (exponent bump, LayerNorm in FP32, …).
+    """
+
+    device = torch.device(args.device)
+    ckpt   = load_checkpoint(args.intervention_checkpoint, device=device)
+
+
+    # we want to ensure that we are picking up the training in EXACTLY the same way as before,
+    # modulo the intervention changes which will really only change the `mx_specs` object
+    # we also need to make sure to set the random seed and that we pick up at the batch we left off at,
+    # so that there is parity.
+
+    # ───────────────────────────────────────────────────────── base config
+    base_args = merge_args(ckpt["args"], args)     # apply overrides
+    base_args.device = args.device                 # honour current CLI
+
+    # NB: we do *not* touch base_args.noise_std, batch, etc.
+    #     they stay identical to the original run.
+
+    # ─────────────────────────────────────────────────────────  W&B set-up
+    tag_suffix = []
+    if base_args.bump_up_overflow_exponent: tag_suffix.append("bumpExp")
+    if base_args.dont_quantize_layernorm:   tag_suffix.append("noLNq")
+    if base_args.dont_quantize_gelu:        tag_suffix.append("noGELUq")
+    if base_args.a_elem_format == "bfloat16":tag_suffix.append("bf16Act")
+
+    new_tag = "_".join(tag_suffix) or "control"
+
+    wandb.init(
+        project   = base_args.wandb_project,
+        name      = f"intervention_{new_tag}_{int(time.time())}",
+        config    = vars(base_args),
+        resume    = "allow",
+        settings  = wandb.Settings(init_timeout=120),
+    )
+
+    # ────────────────────────────────────────────────────────── teacher/batches
+    set_seed(base_args.seed)   # RNG state already restored by load_checkpoint
+    teacher = make_teacher(base_args.width,
+                           base_args.teacher_width,
+                           base_args.teacher_depth,
+                           base_args.teacher_act,
+                           device="cpu").float().to(device)
+
+    # we do *not* pre-construct the full list of batches; we draw them
+    # lazily so the RNG stream is identical.
+    def batch_stream():
+        while True:
+            yield gaussian(base_args.batch, base_args.width, device)
+
+    batches = batch_stream()                          # infinite generator
+
+    # Build fixed val batches (order matters but not RNG-critical)
+    val_batches = [gaussian(base_args.val_batch,
+                            base_args.width,
+                            device) for _ in range(base_args.val_steps)]
+
+    # ────────────────────────────────────────────────────────── model & opt
+    act_name = "linear" if base_args.no_act else base_args.act
+    if base_args.debias_MX_gradient:
+        model = ResidualMLP(base_args.width, base_args.depth,
+                            not base_args.no_ln, act_name,
+                            debias=True).to(device)
+        model.load_state_dict(ckpt["model_state"], strict=False)
+    else:
+        model = ResidualMLP(base_args.width, base_args.depth,
+                            not base_args.no_ln, act_name).to(device)
+        model.load_state_dict(ckpt["model_state"])
+
+    opt, sched = make_optimizer(model, base_args)
+    if ckpt["opt_state"] is not None:
+        opt.load_state_dict(ckpt["opt_state"])
+    if ckpt["sched_state"] is not None and sched is not None:
+        sched.load_state_dict(ckpt["sched_state"])
+
+    # ────────────────────────────────────────────────────────── bookkeeping
+    ld = LoopData(args=base_args,
+                  global_step=ckpt["global_step"],
+                  g_fp32_mean = ckpt["g_fp32_mean"],
+                  g_fp32_norm = ckpt["g_fp32_norm"],
+                  group_mean_fp32 = defaultdict(dict, ckpt["group_mean_fp32"]),
+                  g32_store = {int(k): v.to(device)
+                               for k, v in ckpt.get("g32_store", {}).items()}
+                 )
+
+    # IMPORTANT:  we do **not** have the FP32 caches anymore, so the
+    # ε-metrics cannot be computed.  We simply turn them off by pretending
+    # `store_full_gradients=False`.
+    base_args.store_full_gradients = bool(ld.g32_store)
+
+    param_slices = build_param_slices(model, not base_args.no_ln)
+
+    # ────────────────────────────────────────────────────────── run loop
+    steps_remaining = base_args.steps_total - ckpt["global_step"]
+    mx_batches      = (next(batches) for _ in range(steps_remaining))
+
+    export_dir = pathlib.Path(args.save_root) / "intervention_dumps"
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    mx_loop(ld,
+            ckpt["model_state"],      # original *initial* state is not needed
+            teacher,
+            mx_batches,
+            val_batches,
+            param_slices,
+            export_dir)
+
+    wandb.finish()
+
 
 
 # ------------------------- CLI -----------------------------------
@@ -961,6 +1564,8 @@ def parse():
     p.add_argument("--log_weight_clipping", action="store_true", help="Log when weights clip in low precision")
     p.add_argument("--use_custom_init", action="store_true", help="use custom init with lower gain")
     p.add_argument("--dont_quantize_backprop", action="store_true")
+
+    # MX modification options
     p.add_argument("--bump_up_overflow_exponent", action="store_true",
                help="Apply the exponent bump trick to prevent MX blocks that flow into largest buckets.")
     p.add_argument("--dont_quantize_layernorm", action="store_true",
@@ -984,6 +1589,23 @@ def parse():
     p.add_argument("--wandb_project", default="mx_eps_dual_with_fp64_2")
     p.add_argument("--wandb_name", default=None)
     p.add_argument("--save_root", type=str, default="/n/netscratch/kempner_dev/Lab/nikhilanand/eps_sweeps_depth_width")
+
+
+    # in case we want to log checkpoints around the instability point
+    p.add_argument("--save_checkpoints", action="store_true",
+               help="Save checkpoints during the run, useful for intervention experiments.")
+    p.add_argument("--checkpoint_window_center", type=int, default=6000, help="Which step is the center (we will save +/- radius with this step at the center)")
+    p.add_argument("--checkpoint_window_size", type=int, default=100,
+               help="Size of the window around the center checkpoint to save.")
+    p.add_argument("--checkpoint_every", type=int, default=5)
+
+    # intervention experiment - this will overwrite some of the above args if chosen
+    p.add_argument("--run_intervention", action="store_true",
+               help="Run the intervention experiment starting at a specified checkpoint.")
+    p.add_argument("--intervention_checkpoint", type=str, default=None,
+               help="Path to the checkpoint to start the intervention experiment from.")
+    # -------------------------------------------------------------------------------
+
     args = p.parse_args()
 
     args.save_root = pathlib.Path(args.save_root).expanduser()
@@ -1002,4 +1624,14 @@ def parse():
     return args
 
 if __name__ == "__main__":
-    run_dual(parse())
+    parsed_args = parse()
+
+    if parsed_args.run_intervention:
+        if parsed_args.intervention_checkpoint is None:
+            raise ValueError("If --run_intervention is set, you must provide --intervention_checkpoint.")
+        # Load the model from the checkpoint
+        print(f"Loading model from {parsed_args.intervention_checkpoint}")
+        # TO DO
+    
+    else:
+        run_dual(parse())
