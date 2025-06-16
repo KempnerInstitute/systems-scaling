@@ -17,12 +17,12 @@ model:
   context_length: 512 #2048
   rope: true
   attention_layer_norm: true
-  attention_layer_norm_with_affine: true 
+  attention_layer_norm_with_affine: false 
   multi_query_attention: false
   include_bias: false
   block_type: sequential
   layer_norm_type: default
-  layer_norm_with_affine: true 
+  layer_norm_with_affine: false 
   bias_for_layer_norm: false
   activation_type: gelu 
   attention_dropout: 0.0
@@ -52,7 +52,7 @@ wandb:
   name: ${model.w_mx_format}_${model.a_mx_format}_debug
   log_interval: ${console_log_interval}
   entity: harvardml
-  project: test-precision-MX-fineweb-block-size
+  project: test-precision-MX-fineweb-log-clip
   group: debug
 
 # compile: null

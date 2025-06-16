@@ -477,28 +477,31 @@ class GELUFunction(torch.autograd.Function):
         ctx.first_order_gelu = first_order_gelu
         ctx.name = name
 
-        q_in = vec_quantize(input, mx_specs=mx_specs)
+        if mx_specs["dont_quantize_gelu"]:
+            q_in = input
+        else:
+            q_in = vec_quantize(input, mx_specs=mx_specs)
 
         if first_order_gelu:
             # compute 1.702 * x
-            sigmoid_input = vec_mul(1.703125, q_in, mx_specs=mx_specs)
+            sigmoid_input = vec_mul(1.703125, q_in, mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
         else:
             # compute 1.5958 * (x + 0.044715 * x^3)
             sigmoid_input = vec_mul(q_in, q_in,
-                                    mx_specs=mx_specs)
+                                    mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
             sigmoid_input = vec_mul(sigmoid_input, q_in,
-                                    mx_specs=mx_specs)
+                                    mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
             sigmoid_input = vec_mul(0.044677734, sigmoid_input,
-                                    mx_specs=mx_specs)
+                                    mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
             sigmoid_input = vec_add(sigmoid_input, q_in,
-                                    mx_specs=mx_specs)
+                                    mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
             sigmoid_input = vec_mul(1.59375, sigmoid_input,
-                                    mx_specs=mx_specs)
+                                    mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
 
         # compute Phi(x) using sigmoid
-        phi = vec_exp(-sigmoid_input, mx_specs=mx_specs)
-        phi = vec_add(phi, 1., mx_specs=mx_specs)
-        phi = vec_recip(phi, mx_specs=mx_specs)
+        phi = vec_exp(-sigmoid_input, mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
+        phi = vec_add(phi, 1., mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
+        phi = vec_recip(phi, mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
 
         if mx_specs['quantize_backprop']:
             ctx.save_for_backward(q_in, phi)
@@ -507,7 +510,7 @@ class GELUFunction(torch.autograd.Function):
         ctx.mx_specs = get_backwards_mx_specs(mx_specs)
 
         # return x * Phi(x)
-        return vec_mul(q_in, phi, mx_specs=mx_specs)
+        return vec_mul(q_in, phi, mx_specs=mx_specs, quantize=(not mx_specs['dont_quantize_gelu']))
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -534,27 +537,28 @@ class GELUFunction(torch.autograd.Function):
         '''
         input, phi = ctx.saved_tensors
 
-        grad_output = vec_quantize(grad_output,
-                                   mx_specs=ctx.mx_specs)
+        if not ctx.mx_specs["dont_quantize_gelu"]:
+            grad_output = vec_quantize(grad_output,
+                                    mx_specs=ctx.mx_specs)
 
         # compute Phi'(x)
-        dphi = vec_sub(1, phi, mx_specs=ctx.mx_specs)
-        dphi = vec_mul(phi, dphi, mx_specs=ctx.mx_specs)
+        dphi = vec_sub(1, phi, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
+        dphi = vec_mul(phi, dphi, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
 
         if ctx.first_order_gelu:
-            dphi = vec_mul(1.703125, dphi, mx_specs=ctx.mx_specs)
+            dphi = vec_mul(1.703125, dphi, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
         else:
-            dy   = vec_mul(input, input, mx_specs=ctx.mx_specs)
-            dy   = vec_mul(0.21386719, dy, mx_specs=ctx.mx_specs)
-            dy   = vec_add(1.59375, dy, mx_specs=ctx.mx_specs)
-            dphi = vec_mul(dy, dphi, mx_specs=ctx.mx_specs)
+            dy   = vec_mul(input, input, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
+            dy   = vec_mul(0.21386719, dy, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
+            dy   = vec_add(1.59375, dy, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
+            dphi = vec_mul(dy, dphi, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
 
         # compute x * Phi'(x)
-        x_dphi = vec_mul(input, dphi, mx_specs=ctx.mx_specs)
+        x_dphi = vec_mul(input, dphi, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
 
         # compute Phi(x) + x * Phi'(x)
-        grad_gelu = vec_add(phi, x_dphi, mx_specs=ctx.mx_specs)
+        grad_gelu = vec_add(phi, x_dphi, mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
         grad_input = vec_mul(grad_gelu, grad_output,
-                             mx_specs=ctx.mx_specs)
+                             mx_specs=ctx.mx_specs, quantize=(not ctx.mx_specs['dont_quantize_gelu']))
 
         return (grad_input, None, None, None)

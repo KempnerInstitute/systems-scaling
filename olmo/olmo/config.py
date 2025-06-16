@@ -1180,6 +1180,18 @@ class TrainConfig(BaseConfig):
     Whether to use the fused CE loss function from `flash-attn`.
     """
 
+    log_weight_clipping: bool = field(default=True, metadata={"help": "Enable detailed weight and activation clipping logging."})
+
+
+    weight_clipping_log_interval: int = field(default=20, metadata={"help": "Frequency (in global steps) to log weight clipping."})
+
+
+    elem_format: str = field(default="fp8_e4m3", metadata={"help": "Element format for count_clipped_values function that counts how many values are clipped in this precision."})
+
+    weight_clip_threshold_min: int = field(default=1000, metadata={"help": "Minimum global step to start logging weight clipping stats."})
+
+    weight_clip_threshold_max: int = field(default=10000, metadata={"help": "Maximum global step to log weight clipping stats."})
+
     @property
     def autocast_precision(self) -> torch.dtype:
         if self.precision == "amp_bf16":

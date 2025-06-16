@@ -1,0 +1,19 @@
+
+training:
+  batch_size: 512 # global_train_batch_size
+save_interval: 1000
+save_interval_unsharded: 100000
+save_num_checkpoints_to_keep: 1
+save_num_unsharded_checkpoints_to_keep: 1
+sweep:
+- device_eval_batch_size: 64
+  device_train_microbatch_size: 128
+  eval_interval: 3998
+  max_duration: 50000
+  model:
+    context_length: 512
+    d_model: 576
+    n_heads: 9
+    n_layers: 9
+  params: 72717120
+  ratio: 144.13804551115336

@@ -117,6 +117,10 @@ class MxSpecs(collections.UserDict):
             "vec_use_recip": False,
 
             "custom_cuda": False,
+
+            "bump_up_overflow_exponent": False,
+            "dont_quantize_layernorm": False,
+            "dont_quantize_gelu": False,
         }
 
         self.help_strings = {
@@ -161,6 +165,9 @@ class MxSpecs(collections.UserDict):
             "vec_use_recip": "Use 1/x to compute division",
 
             "custom_cuda": "Enable custom CUDA kernels for quantization",
+            "bump_up_overflow_exponent": "Bumps up the shared scale exponent by 1 if we overflow inside a block.",
+            "dont_quantize_layernorm": "Don't quantize LayerNorm. ",
+            "dont_quantize_gelu": "Don't quantize GELU activation. ",
         }
 
         for k in defaults:

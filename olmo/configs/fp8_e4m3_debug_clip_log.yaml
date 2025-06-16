@@ -52,7 +52,7 @@ wandb:
   name: ${model.w_mx_format}_${model.a_mx_format}_debug
   log_interval: ${console_log_interval}
   entity: harvardml
-  project: test-precision-MX-fineweb-block-size
+  project: test-precision-MX-fineweb-log-clip
   group: debug
 
 # compile: null

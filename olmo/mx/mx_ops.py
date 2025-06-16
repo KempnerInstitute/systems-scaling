@@ -46,7 +46,7 @@ from .elemwise_ops import (
 # -------------------------------------------------------------------------
 # Helper funcs
 # -------------------------------------------------------------------------
-def _shared_exponents(A, method="max", axes=None, ebits=0):
+def _shared_exponents(A, method="max", axes=None, ebits=0, ):
     """
     Get shared exponents for the passed matrix A.
     Args:
@@ -180,6 +180,7 @@ def _quantize_mx(
     round="nearest",
     flush_fp32_subnorms=False,
     custom_cuda=False,
+    bump_up_overflow_exponent=False,
 ):
     """Function used for MX* quantization
     """
@@ -269,6 +270,24 @@ def _quantize_mx(
         shared_exp = _shared_exponents(
             A, method=shared_exp_method, axes=shared_exp_axes, ebits=0,
         )
+        if bump_up_overflow_exponent:
+            # Bump up the max exponent by one to avoid overflow
+            # in the quantization step
+            # THIS ONLY WORKS FOR FP8 E4M3 RIGHT NOW
+            assert elem_format == ElemFormat.fp8_e4m3, "Exponent bump trick only works for E4M3 FP8 format right now"
+            assert not custom_cuda, "Exponent bump trick is not supported in custom CUDA ops"
+            
+            if shared_exp_method == "max":
+                if axes is None:
+                    mx = torch.max(torch.abs(A))
+                else:
+                    for axis in axes:
+                        mx, _ = torch.max(torch.abs(A), dim=axis, keepdim=True)
+            else:
+                raise Exception("Unrecognized shared exponent selection method %s not supported in exponent bump trick." % (shared_exp_method))
+            
+            maybe_bump_mask = (mx > (1.75 * (2.0 ** torch.floor(torch.log2(mx))))) # which blocks need to be bumped up
+            shared_exp = shared_exp + maybe_bump_mask.to(shared_exp.dtype)
 
         # Flush subnormal FP32 inputs to zero
         if flush_fp32_subnorms:
@@ -328,4 +347,5 @@ def quantize_mx_op(
             axes=axes, round=round,
             shared_exp_method=mx_specs["shared_exp_method"],
             flush_fp32_subnorms=mx_specs["mx_flush_fp32_subnorms"],
-            custom_cuda=mx_specs["custom_cuda"])
+            custom_cuda=mx_specs["custom_cuda"],
+            bump_up_overflow_exponent=mx_specs["bump_up_overflow_exponent"],)
