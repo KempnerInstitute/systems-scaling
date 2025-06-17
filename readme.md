@@ -2,6 +2,8 @@
 
 [Chloe Su](https://x.com/Huangyu58589918)*, [Mujin Kwun](https://x.com/MJK12341234), Stephanie Gil, [Sham Kakade](https://x.com/ShamKakade6), [Nikhil Anand](https://x.com/nikhil_anand91)\*
 
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
 ### Setup
 ```
 module load cuda/12.4.1-fasrc01
