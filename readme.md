@@ -10,7 +10,9 @@ module load gcc/12.2.0-fasrc01
 ```
 Create a Conda environment
 ```
-
+git clone systems-scaling
+cd systems-scaling
+conda create 
 ```
 Install dependencies
 
