@@ -10,7 +10,7 @@ module load cuda/12.4.1-fasrc01
 export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:${HOME}/cuda-12.0/targets/x86_64-linux/include
 module load gcc/12.2.0-fasrc01
 ```
-Create a Conda environment
+Create a Conda environment and Install dependencies
 ```
 git clone systems-scaling
 cd systems-scaling
@@ -18,9 +18,7 @@ conda create -n scaling python=3.10
 conda activate scaling
 pip install -e .[all]
 ```
-Install dependencies
-```
-```
+
 
 Small edits in microxcaling. 
 * microxcaling: 
