@@ -14,7 +14,9 @@ Create a Conda environment
 ```
 git clone systems-scaling
 cd systems-scaling
-conda create 
+conda create -n scaling python=3.10
+conda activate scaling
+pip install -e .[all]
 ```
 Install dependencies
 ```
