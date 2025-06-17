@@ -32,18 +32,17 @@ systems-scaling/
 │   │   └── student_teacher.py
 │   │
 │   └── olmo/               # OLMo (model) code
-│        ├── main.py               # train script
-│        ├── scripts/              # Utility functions
-│        ├── /               # 
+│        ├── main.py               # Configuration files
+│        ├── configs/              #  functions
+│        ├── scripts/               # 
 │        └── __init__.py           
-│── notebooks/                # Jupyter notebooks for analysis
-│    └──
+│── plot/                # Jupyter notebooks/scripts for plots and analysis
+│    ├── accuracy_relationships.ipynb
+│    └── curve_fitting_and_instability.ipynb    # Scaling law plots
 │── nanoGPT/                  # nanoGPT code (not used in our paper finally)
 │   ├── main.py               # train script
-│   ├── utils.py              # Utility functions
 │   ├── models/               
 │   └── __init__.py        
-│── configs/                  # Configuration files
 │── requirements.txt          # Dependencies
 │── README.md                 # Project documentation
 │── .gitignore            
