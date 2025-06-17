@@ -20,22 +20,23 @@ systems-scaling/
 │── microxcaling/             # Folder containing datasets
 │   ├──                       # 
 │   ├──                       
-│   └── README.md             # Documentation for data
-│── nanoGPT/                  # nanoGPT (model) code
-│   ├── main.py               #  script
+│   └── README.md                
+│── olmo/                  
+│   │── synthetic
+│   │   └── student_teacher.py
+│   │
+│   └── olmo/               # OLMo (model) code
+│        ├── main.py               #  script
+│        ├── utils.py              # Utility functions
+│        ├── models/               # 
+│        └── __init__.py           
+│── notebooks/                # Jupyter notebooks for analysis
+│    └──
+│── nanoGPT/                  # nanoGPT code (not used in our paper)
+│   ├── main.py               # train script
 │   ├── utils.py              # Utility functions
 │   ├── models/               # 
-│   └── __init__.py           
-│── olmo/                  
-│     │── synthetic
-│     │   └── student_teacher.py
-│     │
-│     └── olmo/               # OLMo (model) code
-│         ├── main.py               #  script
-│         ├── utils.py              # Utility functions
-│         ├── models/               # 
-│         └── __init__.py           
-│── notebooks/                # Jupyter notebooks for analysis
+│   └── __init__.py        
 │── configs/                  # Configuration files
 │── requirements.txt          # Dependencies
 │── README.md                 # Project documentation
