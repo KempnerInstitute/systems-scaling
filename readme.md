@@ -30,16 +30,16 @@ systems-scaling/
 │   │   └── student_teacher.py
 │   │
 │   └── olmo/               # OLMo (model) code
-│        ├── main.py               #  script
+│        ├── main.py               # train script
 │        ├── utils.py              # Utility functions
 │        ├── models/               # 
 │        └── __init__.py           
 │── notebooks/                # Jupyter notebooks for analysis
 │    └──
-│── nanoGPT/                  # nanoGPT code (not used in our paper)
+│── nanoGPT/                  # nanoGPT code (not used in our paper finally)
 │   ├── main.py               # train script
 │   ├── utils.py              # Utility functions
-│   ├── models/               # 
+│   ├── models/               
 │   └── __init__.py        
 │── configs/                  # Configuration files
 │── requirements.txt          # Dependencies
