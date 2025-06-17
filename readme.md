@@ -12,6 +12,8 @@ Create a Conda environment
 ```
 
 ```
+Install dependencies
+
 
 Small edits in microxcaling. 
 * microxcaling: 
