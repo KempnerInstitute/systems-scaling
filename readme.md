@@ -12,7 +12,7 @@ module load gcc/12.2.0-fasrc01
 ```
 Create a Conda environment and Install dependencies
 ```
-git clone systems-scaling
+git clone git@github.com:Hither1/systems-scaling.git
 cd systems-scaling
 conda create -n scaling python=3.10
 conda activate scaling
