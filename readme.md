@@ -19,9 +19,11 @@ conda activate scaling
 pip install -e .[all]
 ```
 ### Usage
+```
+sbatch launch_sweep_scale.sh configs/base.yaml configs/sweeps/scale.yaml
+```
 
-
-Small edits in microxcaling. 
+#### Small edits in microxcaling. 
 * microxcaling: 
 
 
