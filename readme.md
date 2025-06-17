@@ -20,7 +20,6 @@ Install dependencies
 
 Small edits in microxcaling. 
 * microxcaling: 
-* Tatm: data/datasets.py
 
 
 ### Contents
