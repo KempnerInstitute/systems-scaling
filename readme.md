@@ -10,9 +10,9 @@ Small edits in microxcaling.
 
 
 systems-scaling/
-│── microxcaling/                     # Folder containing datasets
-│   ├──             # 
-│   ├──             # Processed/cleaned data
+│── microxcaling/             # Folder containing datasets
+│   ├──                       # 
+│   ├──                       
 │   └── README.md             # Documentation for data
 │── nanoGPT/                  # nanoGPT (model) code
 │   ├── main.py               #  script
@@ -21,6 +21,8 @@ systems-scaling/
 │   └── __init__.py           
 │── olmo/                  
 │     │── synthetic
+│     │   └── student_teacher.py
+│     │
 │     └── olmo/               # OLMo (model) code
 │         ├── main.py               #  script
 │         ├── utils.py              # Utility functions
