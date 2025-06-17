@@ -39,6 +39,11 @@ systems-scaling/
 
 
 
+
+If you use this work, please cite:
+```
+```
+
 Downstream evaluation
 ```bash
     from olmo.eval.downstream import *
