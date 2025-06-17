@@ -1,5 +1,7 @@
 ## Characterization and Mitigation of Training Instabilities in Microscaling Formats
 
+Chloe Su*, Mujin Kwun, Stephanie Gil, Sham Kakade, Nikhil Anand*
+
 ### Setup
 ```
 module load cuda/12.4.1-fasrc01
