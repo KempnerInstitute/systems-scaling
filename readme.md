@@ -13,7 +13,7 @@ Small edits in microxcaling.
 
 
 ### Contents
-
+```
 systems-scaling/
 │── microxcaling/             # Folder containing datasets
 │   ├──                       # 
@@ -38,7 +38,7 @@ systems-scaling/
 │── requirements.txt          # Dependencies
 │── README.md                 # Project documentation
 │── .gitignore            
-
+```
 
 
 
