@@ -33,8 +33,8 @@ systems-scaling/
 │   │
 │   └── olmo/               # OLMo (model) code
 │        ├── main.py               # train script
-│        ├── utils.py              # Utility functions
-│        ├── models/               # 
+│        ├── scripts/              # Utility functions
+│        ├── /               # 
 │        └── __init__.py           
 │── notebooks/                # Jupyter notebooks for analysis
 │    └──
