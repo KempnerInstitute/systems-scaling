@@ -42,6 +42,7 @@ systems-scaling/
 
 If you use this work, please cite:
 ```
+bibtex
 ```
 
 Downstream evaluation
