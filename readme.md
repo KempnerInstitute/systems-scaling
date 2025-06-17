@@ -19,11 +19,13 @@ systems-scaling/
 │   ├── utils.py              # Utility functions
 │   ├── models/               # 
 │   └── __init__.py           
-│── olmo/                  # OLMo (model) code
-│   ├── main.py               #  script
-│   ├── utils.py              # Utility functions
-│   ├── models/               # 
-│   └── __init__.py           
+│── olmo/                  
+│     │── synthetic
+│     └── olmo/               # OLMo (model) code
+│         ├── main.py               #  script
+│         ├── utils.py              # Utility functions
+│         ├── models/               # 
+│         └── __init__.py           
 │── notebooks/                # Jupyter notebooks for analysis
 │── configs/                  # Configuration files
 │── requirements.txt          # Dependencies
