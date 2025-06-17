@@ -1,6 +1,6 @@
 ## Characterization and Mitigation of Training Instabilities in Microscaling Formats
 
-[Chloe Su](https://x.com/Huangyu58589918)*, Mujin Kwun, Stephanie Gil, [Sham Kakade](https://x.com/ShamKakade6), [Nikhil Anand](https://x.com/nikhil_anand91)\*
+[Chloe Su](https://x.com/Huangyu58589918)*, [Mujin Kwun](https://x.com/MJK12341234), Stephanie Gil, [Sham Kakade](https://x.com/ShamKakade6), [Nikhil Anand](https://x.com/nikhil_anand91)\*
 
 ### Setup
 ```
