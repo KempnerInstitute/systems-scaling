@@ -36,23 +36,28 @@ systems-scaling/
 │   │    ├── activations.py                      
 │   │    ├── layernorm.py
 │   │    ├── mx_mapping.py
-│   │    ├── mx_ops.py              
-│   │    └── README.md             
+│   │    ├── mx_ops.py
+│   │    ├── norm_utils.py
+│   │    ├── specs.py              
+│   │    └── vector_ops.py
+│   │            
 │   │── synthetic
 │   │   └── student_teacher.py
 │   │
 │   └── olmo/               # OLMo (model) code
 │        ├── main.py               # Configuration files
 │        ├── configs/              #  functions
-│        ├── scripts/               # 
+│        ├── scripts/              # 
 │        └── __init__.py           
 │── plot/                # Jupyter notebooks/scripts for plots and analysis
 │    ├── accuracy_relationships.ipynb
 │    └── curve_fitting_and_instability.ipynb    # Scaling law plots
+│   
 │── nanoGPT/                  # nanoGPT code (not used in our paper finally)
 │   ├── main.py               # train script
 │   ├── models/               
-│   └── __init__.py        
+│   └── __init__.py
+│        
 │── requirements.txt          # Dependencies
 │── README.md                 # Project documentation
 │── .gitignore            
