@@ -29,8 +29,7 @@ sbatch launch_sweep_scale.sh configs/base.yaml configs/sweeps/scale.yaml
 
 ### Contents
 ```
-systems-scaling/
-               
+systems-scaling/             
 │── olmo/
 │   │── mx/             # microxcaling library (with our modificaitons)
 │   │    ├── activations.py                      
