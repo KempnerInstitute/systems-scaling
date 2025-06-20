@@ -30,11 +30,14 @@ sbatch launch_sweep_scale.sh configs/base.yaml configs/sweeps/scale.yaml
 ### Contents
 ```
 systems-scaling/
-│── microxcaling/             # Folder containing datasets
-│   ├──                       # 
-│   ├──                       
-│   └── README.md                
-│── olmo/                  
+               
+│── olmo/
+│   │── mx/             # microxcaling library (with our modificaitons)
+│   │    ├── activations.py                      
+│   │    ├── layernorm.py
+│   │    ├── mx_mapping.py
+│   │    ├── mx_ops.py              
+│   │    └── README.md             
 │   │── synthetic
 │   │   └── student_teacher.py
 │   │
