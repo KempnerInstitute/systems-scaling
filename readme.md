@@ -19,10 +19,14 @@ conda activate scaling
 pip install -e .[all]
 ```
 ### Usage
+#### Language model training
 In `olmo/` folder, run
 ```
 sbatch scripts/launch_sweep_scale.sh configs/base.yaml configs/sweeps/scale.yaml
 ```
+
+#### Synthetic training
+
 
 #### Small edits in microxcaling. 
 * microxcaling: 
