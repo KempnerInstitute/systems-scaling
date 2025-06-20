@@ -19,8 +19,9 @@ conda activate scaling
 pip install -e .[all]
 ```
 ### Usage
+In `olmo/` folder, run
 ```
-sbatch launch_sweep_scale.sh configs/base.yaml configs/sweeps/scale.yaml
+sbatch scripts/launch_sweep_scale.sh configs/base.yaml configs/sweeps/scale.yaml
 ```
 
 #### Small edits in microxcaling. 
