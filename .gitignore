@@ -5,6 +5,7 @@ wandb
 out
 out-shakespeare-char
 LLM
+olmo/intervention_dumps/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

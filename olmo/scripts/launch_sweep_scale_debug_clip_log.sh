@@ -41,7 +41,7 @@ else
 fi
 
 # Set default path for checkpoints if not set
-export CHECKPOINTS_PATH="/n/netscratch/kempner_dev/Lab/nikhilanand/olmo_debug/" # "/n/holylfs06/LABS/kempner_dev/Lab/nikhilanand/systems-scaling/ckpts"
+export CHECKPOINTS_PATH="/n/netscratch/kempner_dev/Lab/nikhilanand/olmo_log_ln_clip/" # "/n/holylfs06/LABS/kempner_dev/Lab/nikhilanand/systems-scaling/ckpts"
 
 # TODO: does this help?
 # export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
