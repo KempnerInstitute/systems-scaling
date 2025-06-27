@@ -36,7 +36,9 @@ Code for the student-teacher model experiments on synthetic data can be found un
 python synthetic/student_teacher.py --depth 4 --width 512 --batch 2048 --lr_max 6e-4 --wandb_project <YOUR PROJECT NAME> --store_full_gradients --log_weight_clipping --val_every 100 --steps 9000 --save_checkpoints --checkpoint_window_center 14100 --checkpoint_window_size 200 --checkpoint_every 20
 ```
 
-which will run the synthetic experiment and save checkpoints at starting at global step 13900 every 20 steps.  To run an intervention experiment, for example returning to full precision at the intervention point, you can run
+which will run the synthetic experiment and save checkpoints at starting at global step 13900 every 20 steps.  Note that `steps` above refers to how many steps both the FP32 and MX training loops take, so 9000 `steps` equates to a total of 18000 global steps.  If you plan on using deterministic torch algorithms (on by default), you may need to export the CuBLAS work config by `export CUBLAS_WORKSPACE_CONFIG=:16:8`  or `:4096:8`.
+
+To run an intervention experiment, for example returning to full precision at the intervention point, you can run
 
 ```
 python synthetic/student_teacher.py --run_intervention --intervention_checkpoint <PATH TO YOUR CHECKPOINT> --depth 4 --width 512 --batch 2048 --lr_max 6e-4 --steps_total 500 --store_full_gradients --log_weight_clipping --val_every 100 --wandb_project <YOUR PROJECT NAME> --dont_inject_mx_ops
