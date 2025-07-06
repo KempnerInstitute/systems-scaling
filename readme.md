@@ -4,7 +4,7 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 [![arXiv](https://img.shields.io/badge/arXiv-2506.20752-B31B1B.svg)](https://arxiv.org/abs/2506.20752)
-
+[![Blog Post](https://img.shields.io/badge/arXiv-2506.20752-B31B1B.svg)]()
 
 
 ### Setup
