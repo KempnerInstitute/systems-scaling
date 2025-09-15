@@ -17,6 +17,9 @@ torch.use_deterministic_algorithms(True)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+
 def set_seed(s):
     random.seed(s); np.random.seed(s); torch.manual_seed(s)
     if torch.cuda.is_available(): torch.cuda.manual_seed_all(s)
@@ -88,11 +91,20 @@ def save_eps(run_dir, step, eps, group_dict):
                 "group_var": group_dict},
                p / f"eps_step{step:04d}.pt")
 
-def val_loss(model, teacher, crit, val_batches, device=None):
+def val_loss(model, teacher, loss_type, val_batches, *, T=1.0, device=None):
     if device is None:
         device = next(model.parameters()).device
     with torch.no_grad():
-        losses = [crit(model(v.to(device)), teacher(v.to(device))) for v in val_batches]
+        losses = []
+        for v in val_batches:
+            if loss_type == "ce_soft":
+                losses.append(
+                    soft_cross_entropy(model(v.to(device)),
+                                       teacher(v.to(device)), T=T))
+            else:
+                losses.append(
+                    F.mse_loss(model(v.to(device)), teacher(v.to(device))))
+        #losses = [crit(model(v.to(device)), teacher(v.to(device))) for v in val_batches]
     return torch.stack(losses).mean().item()
 
 # ===================  MODEL  =====================================
@@ -323,6 +335,29 @@ def make_optimizer(model, args):
         sched = torch.optim.lr_scheduler.CosineAnnealingLR(
                     opt, T_max=args.steps_total, eta_min=args.lr_min)
     return opt, sched
+
+def soft_cross_entropy(student_logits: torch.Tensor,
+                       teacher_logits: torch.Tensor,
+                       T: float = 1.0) -> torch.Tensor:
+    """
+    Cross-entropy between two logit tensors (N, C).
+
+    •  `T` is the distillation temperature (Hinton et al. 2015).
+       When T=1 this is the ordinary distributional cross-entropy.
+
+    Returns a scalar (mean over the batch).
+    """
+    # 1. soften both distributions
+    log_q = F.log_softmax(student_logits / T, dim=1)   # log Q  (student)
+    p     = F.softmax(teacher_logits / T, dim=1)       # P      (teacher)
+
+    # 2.  KL(P ‖ Q)  ==  Σ_i P_i (log P_i − log Q_i)
+    #    `F.kl_div` takes log_Q as first arg, P as second.
+    loss = F.kl_div(log_q, p, reduction="batchmean")   # = H(P,Q) − H(P)
+
+    # 3.  Optional temperature scaling (common in distillation)
+    return loss * (T * T)
+
 
 # ===================  MX kernel flip  ============================
 from mx import finalize_mx_specs, mx_mapping
@@ -574,9 +609,13 @@ def fp32_loop(ld: LoopData,
 
     for step, x in enumerate(batches):
         x = x.to(args.device, non_blocking=True)
-        y = teacher_fp32(x) + args.noise_std * torch.randn_like(x, dtype=x.dtype)
+        y = teacher_fp32(x) # + args.noise_std * torch.randn_like(x, dtype=x.dtype)
         opt32.zero_grad(set_to_none=True)
-        loss = F.mse_loss(model(x), y)
+        if args.loss == "ce_soft":
+            loss = soft_cross_entropy(model(x), y, T=args.T)
+        else:
+            y += args.noise_std * torch.randn_like(x, dtype=x.dtype) # only use gaussian noise in mse case
+            loss = F.mse_loss(model(x), y)
         loss.backward()
 
         if args.log_weight_clipping:
@@ -660,7 +699,7 @@ def fp32_loop(ld: LoopData,
 
         if step % args.val_every == 0:
             model.eval()
-            v = val_loss(model, teacher_fp32, F.mse_loss, val_batches)
+            v = val_loss(model, teacher_fp32, args.loss, val_batches, T=args.T)
             ld.loss_rec["fp32"][f"val_{step}"] = v
             print(f"val_loss_fp32: {v:.3e}")
             ld.log({"val/loss_fp32": v})
@@ -740,9 +779,15 @@ def mx_loop(ld: LoopData,
             y = targets[step]
             y = y.to(device)
         else:
-            y = teacher_fp32(x) + args.noise_std * torch.randn_like(x, dtype=x.dtype)
+            y = teacher_fp32(x)
         opt.zero_grad(set_to_none=True)
-        loss_mx = F.mse_loss(model(x), y); loss_mx.backward()
+        if args.loss == "ce_soft":
+            loss_mx = soft_cross_entropy(model(x), y, T=args.T)
+        else:
+            y += args.noise_std * torch.randn_like(x, dtype=x.dtype) # only use gaussian noise in mse case
+            loss_mx = F.mse_loss(model(x), y)
+
+        loss_mx.backward()
 
         if args.log_weight_clipping:
             clipW_tot = elemsW_tot = 0
@@ -907,12 +952,14 @@ def mx_loop(ld: LoopData,
 
         if step % args.val_every == 0:
             model.eval()
-            #v = val_loss(model, teacher_fp32, F.mse_loss, val_batches)
             if val_targets is not None:
-                losses = [F.mse_loss(model(xv.to(device)), yv.to(device)) for xv, yv in zip(val_batches, val_targets)]
+                if args.loss == "ce_soft":
+                    losses = [soft_cross_entropy(model(xv.to(device)), yv.to(device), T=args.T) for xv, yv in zip(val_batches, val_targets)]
+                else:
+                    losses = [F.mse_loss(model(xv.to(device)), yv.to(device)) for xv, yv in zip(val_batches, val_targets)]
                 v = torch.stack(losses).mean().item()
             else:
-                v = val_loss(model, teacher_fp32, F.mse_loss, val_batches)
+                v = val_loss(model, teacher_fp32, args.loss, val_batches, T=args.T)
 
             ld.loss_rec["mx"][f"val_{step}"] = v
             print(f"val_loss_mx: {v:.3e}")
@@ -989,8 +1036,13 @@ def run_dual(args):
     val_x   = [gaussian(args.val_batch, args.width, device_cpu) for _ in range(args.val_steps)]
 
     with torch.no_grad():
-        train_y = [teacher_fp32(x.to(device_model)).cpu() + args.noise_std * torch.randn_like(x) for x in train_x]
-        val_y   = [teacher_fp32(x.to(device_model)).cpu() + args.noise_std * torch.randn_like(x) for x in val_x]
+        if args.loss == "ce_soft":
+            # for softmax cross-entropy we need to use the teacher model to generate the targets
+            train_y = [teacher_fp32(x.to(device_model)).cpu() for x in train_x]
+            val_y   = [teacher_fp32(x.to(device_model)).cpu() for x in val_x]
+        else:
+            train_y = [teacher_fp32(x.to(device_model)).cpu() + args.noise_std * torch.randn_like(x) for x in train_x]
+            val_y   = [teacher_fp32(x.to(device_model)).cpu() + args.noise_std * torch.randn_like(x) for x in val_x]
 
     X = torch.stack(train_x, dim=0)   # shape (steps_total, batch, width)
     Y = torch.stack(train_y, dim=0)
@@ -1161,6 +1213,13 @@ def parse():
     p.add_argument("--sgd", action="store_true",
                help="use plain SGD (no momentum) instead of Adam")
     p.add_argument("--momentum", type=float, default=0.0, help="SGD momentum")
+    p.add_argument("--loss",
+               choices=["mse", "ce_soft"],
+               default="mse",
+               help="MSE or distillation-style soft cross-entropy")
+
+    p.add_argument("--T", type=float, default=1.0,
+                help="Distillation temperature when --loss ce_soft")
 
     p.add_argument("--w_elem_format", default="fp8_e4m3")
     p.add_argument("--a_elem_format", default="fp8_e4m3")
